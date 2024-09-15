@@ -31,7 +31,3 @@ def create_user_roles_and_permissions(sender, **kwargs):
 
     # Customer Group does not have any specific permissions
     Group.objects.get_or_create(name='Customer')
-
-
-
-    #comment out the following lines if you don't want to create a superuser
