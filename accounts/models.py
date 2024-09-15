@@ -1,8 +1,8 @@
-# accounts/models.py
-
 from django.utils import timezone 
+from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.models import AbstractUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from django.core.mail import send_mail
 
@@ -37,6 +37,7 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractUser, PermissionsMixin):
+    username = None  # Remove the username field
     email = models.EmailField(_('email address'), unique=True)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -47,18 +48,7 @@ class CustomUser(AbstractUser, PermissionsMixin):
 
     objects = CustomUserManager()
 
-    def __str__(self):
-        return self.email
-    
-    def email_user(self, subject, message, from_email=None, **kwargs):
-        """
-        Sends an email to this user.
-        """
-        send_mail(subject, message, from_email, [self.email], **kwargs)
-
-
- #     # Choices for the role field   
-
+    # Choices for the role field   
     ADMIN = 'admin'
     MANAGER = 'manager'
     EXECUTIVE_DIRECTOR = 'executive_director'
@@ -90,16 +80,74 @@ class CustomUser(AbstractUser, PermissionsMixin):
     def is_customer(self):
         return self.role == self.CUSTOMER
 
-
-
-# Example of other models that may relate to Company without causing circular imports
-class Project(models.Model):
-    name = models.CharField(max_length=100)
-    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='projects')
-    manager = models.ForeignKey('employee.Employee', on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_projects')
-    description = models.TextField(blank=True, null=True)
-    start_date = models.DateField()
-    end_date = models.DateField(blank=True, null=True)
-
     def __str__(self):
-        return f'{self.name} in {self.company.name}'
+        return self.email
+
+    def email_user(self, subject, message, from_email=None, **kwargs):
+        """
+        Sends an email to this user.
+        """
+        send_mail(subject, message, from_email, [self.email], **kwargs)
+
+    def save(self, *args, **kwargs):
+        # Track if this is a new instance or an update
+        is_new_instance = self._state.adding
+
+        # Store the original role before saving
+        original_role = None
+        if not is_new_instance:
+            original_role = CustomUser.objects.get(pk=self.pk).role
+
+        # Call the original save method to ensure the user is saved to the database
+        super(CustomUser, self).save(*args, **kwargs)
+
+        # Check if the role has changed or if this is a new user
+        if is_new_instance or (original_role != self.role):
+            # Clear existing groups to avoid conflicting group memberships
+            self.groups.clear()
+
+            # Determine the group based on the user's role
+            group_name = None
+            if self.role == self.MANAGER:
+                group_name = 'Manager'
+            elif self.role == self.EXECUTIVE_DIRECTOR:
+                group_name = 'Executive Director'
+            elif self.role == self.EMPLOYEE:
+                group_name = 'Employee'
+            elif self.role == self.CUSTOMER:
+                group_name = 'Customer'
+
+            # If group_name is determined, proceed to add the user to the correct group
+            if group_name:
+                # Get or create the group
+                group, created = Group.objects.get_or_create(name=group_name)
+
+                # Assign default permissions to the group if it's newly created
+                if created:
+                    self.assign_permissions_to_group(group, group_name)
+
+                # Add the user to the specific group
+                self.groups.add(group)
+
+    def assign_permissions_to_group(self, group, group_name):
+        """
+        Helper method to assign default permissions to a group.
+        Adjust as necessary for your use case.
+        """
+        # Define default permissions based on the group name
+        permissions = []
+        if group_name == 'Manager':
+            permissions = ['view_employee', 'change_employee', 'delete_employee']
+        elif group_name == 'Executive Director':
+            permissions = ['view_employee']
+        elif group_name == 'Employee':
+            permissions = ['view_employee']
+        elif group_name == 'Customer':
+            permissions = []
+
+        # Assign the permissions to the group
+        content_type = ContentType.objects.get(app_label='employee', model='employee')
+        for perm in permissions:
+            permission = Permission.objects.filter(codename=perm, content_type=content_type).first()
+            if permission:
+                group.permissions.add(permission)

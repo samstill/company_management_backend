@@ -14,9 +14,18 @@ class Employee(models.Model):
     company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='company_employees') 
     is_manager = models.BooleanField(default=False)
 
+  
+        
+    
 
 #Validation for Executive Director role
     def save(self, *args, **kwargs):
+        # Check if the employee is being created for the first time
+        if not self.pk:  # This means the employee is being created, not updated
+            # Set the user role to 'employee'
+            if self.user.role != 'employee':
+                self.user.role = 'employee'
+                self.user.save()
         if self.position == 'Executive Director' and self.user.role != CustomUser.EXECUTIVE_DIRECTOR:
             raise ValueError('User must have the Executive Director role to be in this position.')
         super().save(*args, **kwargs)

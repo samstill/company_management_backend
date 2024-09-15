@@ -14,13 +14,16 @@ class Company(models.Model):
     name = models.CharField(max_length=100)
     company_type = models.ForeignKey(CompanyType, on_delete=models.CASCADE)
     ceo = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='ceo_of')
-    executive_director = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='executive_director_of')
+    executive_director = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True,related_name='executive_director_of')
     description = models.TextField(blank=True, null=True)
     founded_date = models.DateField()
 
+        
     def save(self, *args, **kwargs):
-        if self.executive_director and self.executive_director.role != CustomUser.EXECUTIVE_DIRECTOR:
-            raise ValueError('Assigned executive director must have the Executive Director role.')
+        # Check if the company is being created for the first time
+        if self.executive_director.role != 'Executive Director':
+            self.executive_director.role = 'Executive Director'
+            self.executive_director.save()
         super().save(*args, **kwargs)
 
     def __str__(self):
