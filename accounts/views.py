@@ -1,6 +1,5 @@
 from rest_framework import generics, permissions
 from .serializers import UserRegistrationSerializer, CustomTokenObtainPairSerializer
-from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -13,10 +12,15 @@ from .models import CustomUser
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
 from .serializers import CustomUserSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
+from .decorators import role_required
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+
 
 
 
@@ -38,7 +42,8 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 # View accessible only by admin users
 class AdminOnlyView(APIView):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdmin, IsAuthenticated] # Only admin users can access this
+    role_required = 'admin'
 
     def get(self, request):
         data = {"message": "Hello, Admin!"}
@@ -72,8 +77,17 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def verify_token_view(request):
+    try:
+        jwt_authenticator = JWTAuthentication()
+        user, validated_token = jwt_authenticator.authenticate(request)
+        return JsonResponse({'user': user.email, 'role': user.role})
+    except Exception:
+        return JsonResponse({'error': 'Invalid token or not authenticated'}, status=401)
+
 @api_view(['POST'])
-@csrf_exempt
 def login_view(request):
     email = request.data.get('email')
     password = request.data.get('password')
@@ -81,6 +95,10 @@ def login_view(request):
 
     if user is not None:
         tokens = get_tokens_for_user(user)
+        response = JsonResponse({"message": "Login successful."})
+        # Set HTTP-only cookies
+        response.set_cookie('access', tokens['access'], httponly=True, secure=True, samesite='Strict')
+        response.set_cookie('refresh', tokens['refresh'], httponly=True, secure=True, samesite='Strict')
         return Response(tokens, status=status.HTTP_200_OK)
     return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -90,9 +108,32 @@ def logout_view(request):
     return Response({'status': 'success', 'message': 'Logged out successfully'})
 
 @api_view(['GET'])
+
 def user_view(request):
     if request.user.is_authenticated:
         user = request.user
         serializer = CustomUserSerializer(user)
         return Response(serializer.data)
     return Response({'status': 'error', 'message': 'User not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+
+@api_view(['GET'])
+def refresh_token_view(request):
+    refresh_token = request.COOKIES.get('refresh')
+    if not refresh_token:
+        return Response({'detail': 'No refresh token included'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        token = RefreshToken(refresh_token)
+        user = CustomUser.objects.get(id=token['user_id'])
+    except Exception as e:
+        return Response({'detail': 'Invalid refresh token'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not token.token['role'] == user.role:
+        return Response({'detail': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
+
+    new_tokens = get_tokens_for_user(user)
+    response = JsonResponse({"message": "Token refreshed."})
+    response.set_cookie('access', new_tokens['access'], httponly=True, secure=True, samesite='Strict')
+    response.set_cookie('refresh', new_tokens['refresh'], httponly=True, secure=True, samesite='Strict')
+    return response
+
