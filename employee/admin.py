@@ -10,11 +10,11 @@ class EmployeeAdmin(admin.ModelAdmin):
 
     # list_display = ['user', 'company', 'department', 'position', 'is_manager', 'date_of_joining']
     list_filter = ['company', 'department', 'is_manager']
-    search_fields = ['user__username', 'position', 'company__name']
+    search_fields = ['user__email', 'position', 'company__name']
 
    
 
 @admin.register(EmployeePerformance)
 class EmployeePerformanceAdmin(admin.ModelAdmin):
-    list_display = ['employee', 'date', 'review']
-    search_fields = ['employee__user__username']
+    list_display = ['employee', 'date', 'employee_rating' ,'review']
+    search_fields = ['employee__user__email']

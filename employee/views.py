@@ -7,7 +7,7 @@ from .models import Employee, EmployeePerformance
 from .serializers import EmployeeSerializer, EmployeePerformanceSerializer
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-    queryset = Employee.objects.all()
+    queryset = Employee.objects.select_related('user', 'company', 'department').prefetch_related('performances')
     serializer_class = EmployeeSerializer
     permission_classes = [IsAuthenticated]
 

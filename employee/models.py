@@ -1,5 +1,6 @@
 # employee/models.py
 
+from django.utils import timezone
 from django.db import models
 from django.conf import settings  # Import settings to access the CustomUser model
 from company.models import Company, Department
@@ -36,7 +37,8 @@ class Employee(models.Model):
 
 class EmployeePerformance(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='performances')
-    date = models.DateField()
+    date = models.DateField( default=timezone.now)
+    employee_rating = models.IntegerField(null=False, blank=False)
     review = models.TextField()
 
     def __str__(self):
