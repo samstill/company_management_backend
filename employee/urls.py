@@ -1,10 +1,11 @@
-# employee/urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import EmployeeViewSet, EmployeePerformanceViewSet
 
-from django.urls import path
-from .views import EmployeeListView, EmployeeDetailView, EmployeePerformanceListView
+router = DefaultRouter()
+router.register(r'employees', EmployeeViewSet, basename='employee')
+router.register(r'employees/(?P<employee_id>\d+)/performances', EmployeePerformanceViewSet, basename='employee-performance')
 
 urlpatterns = [
-    path('employees/', EmployeeListView.as_view(), name='employee-list'),
-    path('employees/<int:pk>/', EmployeeDetailView.as_view(), name='employee-detail'),
-    path('employees/<int:employee_id>/performances/', EmployeePerformanceListView.as_view(), name='employee-performance-list'),
+    path('', include(router.urls)),
 ]

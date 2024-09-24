@@ -1,19 +1,23 @@
-# hotel/views.py
-
-from rest_framework import generics
+from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from .models import Room, Booking, Review, Payment, Coupon
 from .serializers import RoomSerializer, BookingSerializer, ReviewSerializer, PaymentSerializer
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
 
-# Room Views
-class RoomAvailabilitySearchView(generics.ListAPIView):
+
+# Room ViewSet
+class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.filter(is_available=True)
     serializer_class = RoomSerializer
+    permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        room_type = self.request.query_params.get('room_type')
-        check_in = self.request.query_params.get('check_in_date')
-        check_out = self.request.query_params.get('check_out_date')
+    @action(detail=False, methods=['get'])
+    def search_availability(self, request):
+        room_type = request.query_params.get('room_type')
+        check_in = request.query_params.get('check_in_date')
+        check_out = request.query_params.get('check_out_date')
         queryset = Room.objects.filter(is_available=True)
 
         if room_type:
@@ -25,14 +29,27 @@ class RoomAvailabilitySearchView(generics.ListAPIView):
                 booking__check_out_date__gte=check_in,
                 booking__status='confirmed'
             )
-        return queryset
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
-# Booking Views
-class BookingCreateView(generics.CreateAPIView):
+# Booking ViewSet
+class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all()
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        booking = self.get_object()
+        booking.cancel()
+        return Response({'status': 'Booking cancelled'}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'])
+    def history(self, request):
+        queryset = Booking.objects.filter(customer=request.user).order_by('-created_at')
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         room = serializer.validated_data['room']
@@ -51,26 +68,8 @@ class BookingCreateView(generics.CreateAPIView):
                     pass
 
 
-class BookingCancelView(generics.UpdateAPIView):
-    queryset = Booking.objects.all()
-    serializer_class = BookingSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_update(self, serializer):
-        booking = self.get_object()
-        booking.cancel()
-
-
-class BookingHistoryView(generics.ListAPIView):
-    serializer_class = BookingSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return Booking.objects.filter(customer=self.request.user).order_by('-created_at')
-
-
-# Review Views
-class ReviewCreateView(generics.CreateAPIView):
+# Review ViewSet
+class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
@@ -79,8 +78,8 @@ class ReviewCreateView(generics.CreateAPIView):
         serializer.save(customer=self.request.user)
 
 
-# Payment Views
-class PaymentCreateView(generics.CreateAPIView):
+# Payment ViewSet
+class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]

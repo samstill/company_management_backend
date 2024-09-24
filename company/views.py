@@ -1,21 +1,30 @@
-from django.shortcuts import render
-
-# Create your views here.
-# company/views.py
-
-from rest_framework import generics
+from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from .models import Company, CompanyType, Department, DepartmentEmployee
+from .models import Company, Department, DepartmentEmployee
 from .serializers import CompanySerializer, DepartmentSerializer, DepartmentEmployeeSerializer
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
 
-class CompanyListCreateView(generics.ListCreateAPIView):
+class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
     permission_classes = [IsAuthenticated]
 
+    @action(detail=False, methods=['get'])
+    def count(self, request):
+        company_count = self.queryset.count()
+        return Response({'count': company_count}, status=status.HTTP_200_OK)
 
-class DepartmentListCreateView(generics.ListCreateAPIView):
-    queryset = Department.objects.all()
+    @action(detail=False, methods=['get'])
+    def trends(self, request):
+        # Fake data for now
+        fake_labels = ['January', 'February', 'March', 'April', 'May', 'June']
+        fake_values = [10, 15, 20, 30, 35, 45]
+        return Response({'labels': fake_labels, 'values': fake_values}, status=status.HTTP_200_OK)
+
+
+class DepartmentViewSet(viewsets.ModelViewSet):
     serializer_class = DepartmentSerializer
     permission_classes = [IsAuthenticated]
 
@@ -24,8 +33,7 @@ class DepartmentListCreateView(generics.ListCreateAPIView):
         return Department.objects.filter(company_id=company_id)
 
 
-class DepartmentEmployeeListCreateView(generics.ListCreateAPIView):
-    queryset = DepartmentEmployee.objects.all()
+class DepartmentEmployeeViewSet(viewsets.ModelViewSet):
     serializer_class = DepartmentEmployeeSerializer
     permission_classes = [IsAuthenticated]
 

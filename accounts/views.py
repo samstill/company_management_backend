@@ -19,11 +19,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from .decorators import role_required
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.contrib.auth import get_user_model
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.generics import ListAPIView
+from rest_framework.filters import SearchFilter
 
 
-
-
-
+User = get_user_model()
 
 # User registration view
 class UserRegistrationView(generics.CreateAPIView):
@@ -48,7 +51,64 @@ class AdminOnlyView(APIView):
     def get(self, request):
         data = {"message": "Hello, Admin!"}
         return Response(data)
+
+
+class UserListView(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]  # Only authenticated users can access this viewset
+
+    def list(self, request):
+        """List all users"""
+        queryset = User.objects.all()
+        serializer = CustomUserSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        """Retrieve a single user by ID"""
+        try:
+            user = User.objects.get(pk=pk)
+            serializer = CustomUserSerializer(user)
+            return Response(serializer.data)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=404)
+
+    @action(detail=True, methods=['get'], url_path='get-user-data')
+    def get_user_data(self, request, pk=None):
+        """
+        Custom action to get the data of a particular user by ID.
+        URL: /users/{id}/get-user-data/
+        """
+        try:
+            user = User.objects.get(pk=pk)  # Fetch user by primary key (ID)
+            serializer = CustomUserSerializer(user)
+            return Response(serializer.data)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=404)
+
+# User detail view
     
+class SearchUsersView(ListAPIView):
+    permission_classes = [permissions.IsAdminUser]  # Only admins can search users
+    serializer_class = CustomUserSerializer
+    queryset = User.objects.all()
+    filter_backends = [SearchFilter]
+    search_fields = ['first_name', 'last_name', 'email']
+
+class DeleteUsersView(APIView):
+    permission_classes = [permissions.IsAdminUser]  # Only admins can delete users
+
+    def post(self, request):
+        user_ids = request.data.get('ids', [])
+        if not user_ids or not isinstance(user_ids, list):
+            return Response({'detail': 'No valid user IDs provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            users_to_delete = User.objects.filter(id__in=user_ids)
+            deleted_count = users_to_delete.count()
+            users_to_delete.delete()
+            return Response({'detail': f'{deleted_count} user(s) deleted successfully.'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'detail': f'An error occurred while deleting users: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # Email Verification View
 def verify_email(request, uidb64, token):
     try:
@@ -108,13 +168,26 @@ def logout_view(request):
     return Response({'status': 'success', 'message': 'Logged out successfully'})
 
 @api_view(['GET'])
-
 def user_view(request):
     if request.user.is_authenticated:
         user = request.user
         serializer = CustomUserSerializer(user)
         return Response(serializer.data)
     return Response({'status': 'error', 'message': 'User not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdmin])
+def user_count(request):
+    count = CustomUser.objects.count()
+    return Response({'count': count}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdmin])
+def user_trends(request):
+    # Fake data for trends
+    labels = ['January', 'February', 'March', 'April', 'May', 'June']
+    values = [50, 60, 70, 85, 95, 120]
+    return Response({'labels': labels, 'values': values}, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 def refresh_token_view(request):

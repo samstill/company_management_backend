@@ -1,13 +1,13 @@
-# hotel/urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import RoomViewSet, BookingViewSet, ReviewViewSet, PaymentViewSet
 
-from django.urls import path
-from .views import RoomAvailabilitySearchView, BookingCreateView, BookingCancelView, BookingHistoryView, ReviewCreateView, PaymentCreateView
+router = DefaultRouter()
+router.register(r'rooms', RoomViewSet, basename='room')
+router.register(r'bookings', BookingViewSet, basename='booking')
+router.register(r'reviews', ReviewViewSet, basename='review')
+router.register(r'payments', PaymentViewSet, basename='payment')
 
 urlpatterns = [
-    path('rooms/', RoomAvailabilitySearchView.as_view(), name='room-availability'),
-    path('bookings/', BookingCreateView.as_view(), name='booking-create'),
-    path('bookings/history/', BookingHistoryView.as_view(), name='booking-history'),
-    path('bookings/cancel/<int:pk>/', BookingCancelView.as_view(), name='booking-cancel'),
-    path('reviews/', ReviewCreateView.as_view(), name='review-create'),
-    path('payments/', PaymentCreateView.as_view(), name='payment-create'),
+    path('', include(router.urls)),
 ]
