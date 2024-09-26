@@ -5,6 +5,8 @@ from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from django.core.mail import send_mail
+from django.conf import settings
+from django.core.validators import FileExtensionValidator
 
 
 class CustomUserManager(BaseUserManager):
@@ -42,6 +44,13 @@ class CustomUser(AbstractUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(default=timezone.now)
+    profile_photo = models.ImageField(
+    upload_to='profile_photos/',
+    null=True,
+    blank=True,
+    validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])],
+    help_text=_("profile photo.")
+    )
 
     USERNAME_FIELD = 'email'  # Set email as the unique identifier
     REQUIRED_FIELDS = []  # No other required fields apart from email

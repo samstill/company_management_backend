@@ -6,6 +6,10 @@ from .views import user_view, UserListView, DeleteUsersView, SearchUsersView
 from .views import user_count
 from .views import user_trends
 from rest_framework.routers import DefaultRouter
+from django.conf import settings
+from django.conf.urls.static import static
+
+
 
 app_name = 'accounts'
 
@@ -22,6 +26,8 @@ urlpatterns = [
     path('verify-token/', verify_token_view, name='verify_token'),
     path('users/delete/', DeleteUsersView.as_view(), name='delete_users'),
     path('users/search/', SearchUsersView.as_view(), name='search_users'),
+    
+
 
 
     path('user/count/', user_count, name='user_count'),
@@ -31,3 +37,6 @@ urlpatterns = [
 
 
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

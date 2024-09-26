@@ -39,10 +39,18 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    profile_photo = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
-        fields = ['id', 'email', 'first_name', 'last_name', 'role']
+        fields = ['id', 'email', 'profile_photo', 'first_name', 'last_name', 'role']
 
+    def get_profile_photo(self, obj):
+        request = self.context.get('request')  # Get the request from the context
+        if obj.profile_photo:
+            # Manually construct the correct URL for the profile photo
+            return request.build_absolute_uri(f'/api/accounts{obj.profile_photo.url}')
+        return None  # If no photo, return None
 
 # Custom TokenObtainPairSerializer to include role in the JWT token payload
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

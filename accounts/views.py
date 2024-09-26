@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .permissions import IsAdmin
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_decode
 from django.contrib import messages
@@ -58,31 +58,22 @@ class UserListView(viewsets.ViewSet):
 
     def list(self, request):
         """List all users"""
-        queryset = User.objects.all()
-        serializer = CustomUserSerializer(queryset, many=True)
+        queryset = CustomUser.objects.all()
+        serializer = CustomUserSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
     def retrieve(self, request, pk=None):
         """Retrieve a single user by ID"""
-        try:
-            user = User.objects.get(pk=pk)
-            serializer = CustomUserSerializer(user)
-            return Response(serializer.data)
-        except User.DoesNotExist:
-            return Response({"detail": "User not found."}, status=404)
+        user = get_object_or_404(CustomUser, pk=pk)
+        serializer = CustomUserSerializer(user, context={'request': request})
+        return Response(serializer.data)
 
     @action(detail=True, methods=['get'], url_path='get-user-data')
     def get_user_data(self, request, pk=None):
-        """
-        Custom action to get the data of a particular user by ID.
-        URL: /users/{id}/get-user-data/
-        """
-        try:
-            user = User.objects.get(pk=pk)  # Fetch user by primary key (ID)
-            serializer = CustomUserSerializer(user)
-            return Response(serializer.data)
-        except User.DoesNotExist:
-            return Response({"detail": "User not found."}, status=404)
+        """Custom action to get the data of a particular user by ID"""
+        user = get_object_or_404(CustomUser, pk=pk)
+        serializer = CustomUserSerializer(user, context={'request': request})
+        return Response(serializer.data)
 
 # User detail view
     
