@@ -2,30 +2,12 @@
 
 from rest_framework import serializers
 from .models import Employee, EmployeePerformance
-from accounts.models import CustomUser
-from company.models import Company, Department
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields = ['first_name', 'last_name', 'email', 'profile_photo']
-
-
-class CompanySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Company
-        fields = ['name']
-
-
-class DepartmentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Department
-        fields = ['name']
+from company.serializers import CompanySerializer, DepartmentSerializer
+from accounts.serializers import CustomUserSerializer
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = CustomUserSerializer(read_only=True)
     company = CompanySerializer(read_only=True)
     department = DepartmentSerializer(read_only=True)
     performance_rating = serializers.SerializerMethodField()

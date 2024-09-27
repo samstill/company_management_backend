@@ -44,6 +44,9 @@ class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id', 'email', 'profile_photo', 'first_name', 'last_name', 'role']
+        extra_kwargs = {
+            'profile_photo': {'required': False},  # Make it optional
+        }
 
     def get_profile_photo(self, obj):
         request = self.context.get('request')  # Get the request from the context

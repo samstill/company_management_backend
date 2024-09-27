@@ -52,6 +52,48 @@ class AdminOnlyView(APIView):
         data = {"message": "Hello, Admin!"}
         return Response(data)
 
+# Currently logged in user
+# View to get the currently logged-in user's details
+class LoggedInUserView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
+    serializer_class = CustomUserSerializer
+
+    def get_object(self):
+        # Return the currently logged-in user
+        return self.request.user
+    
+class UpdateLoggedInUserView(generics.UpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CustomUserSerializer
+
+    def get_object(self):
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        user = self.get_object()
+        data = request.data.copy()
+        # Handle profile photo upload
+        if 'profile_photo' in request.FILES:
+            data['profile_photo'] = request.FILES['profile_photo']
+        
+        serializer = self.get_serializer(user, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    
+# View to delete the currently logged-in user's account
+class DeleteLoggedInUserView(APIView):
+    permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
+
+    def delete(self, request):
+        # Get the currently logged-in user
+        user = request.user
+        user.delete()
+        return Response({'message': 'User account deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+
 
 class UserListView(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]  # Only authenticated users can access this viewset
@@ -76,7 +118,16 @@ class UserListView(viewsets.ViewSet):
         return Response(serializer.data)
 
 # User detail view
-    
+class UserDetailView(generics.RetrieveAPIView):
+    permission_classes = [permissions.IsAuthenticated]  # Only authenticated users can access
+    serializer_class = CustomUserSerializer
+    queryset = CustomUser.objects.all()
+
+    def get_object(self):
+        # Get user by primary key (ID) from the URL
+        user_id = self.kwargs['pk']
+        return get_object_or_404(CustomUser, pk=user_id)
+
 class SearchUsersView(ListAPIView):
     permission_classes = [permissions.IsAdminUser]  # Only admins can search users
     serializer_class = CustomUserSerializer
