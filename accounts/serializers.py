@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser
+from .models import CustomUser, UserDevice
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -71,3 +71,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Add extra responses here
         data['role'] = self.user.role
         return data
+
+class UserDeviceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserDevice
+        fields = ['id', 'device_name', 'device_type', 'browser', 'operating_system', 'ip_address', 'login_time', 'last_active']

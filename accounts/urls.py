@@ -3,7 +3,7 @@ from .views import AdminOnlyView, UserRegistrationView, verify_email
 from .views import CustomTokenObtainPairView, verify_token_view
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import user_view, UserListView, DeleteUsersView, SearchUsersView
-from .views import user_count, UserDetailView
+from .views import user_count, UserDetailView, LinkedDevicesView, LogoutDeviceView
 from .views import user_trends, LoggedInUserView, UpdateLoggedInUserView, DeleteLoggedInUserView
 from rest_framework.routers import DefaultRouter
 from django.conf import settings
@@ -38,8 +38,12 @@ urlpatterns = [
     path('user/trends/', user_trends, name='user_trends'),
     path('', include(router.urls)),
 
-
+    path('devices/', LinkedDevicesView.as_view(), name='linked_devices_api'),
+    path('devices/logout/<int:device_id>/', LogoutDeviceView.as_view(), name='logout_device_api'),
 ]
+
+
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

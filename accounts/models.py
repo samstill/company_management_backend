@@ -160,3 +160,16 @@ class CustomUser(AbstractUser, PermissionsMixin):
             permission = Permission.objects.filter(codename=perm, content_type=content_type).first()
             if permission:
                 group.permissions.add(permission)
+
+class UserDevice(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    device_name = models.CharField(max_length=255, blank=True, null=True)
+    device_type = models.CharField(max_length=50, blank=True, null=True)
+    browser = models.CharField(max_length=100)
+    operating_system = models.CharField(max_length=100)
+    ip_address = models.GenericIPAddressField(null=True)
+    login_time = models.DateTimeField(default=timezone.now)
+    last_active = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.device_name or self.browser} ({self.ip_address})"

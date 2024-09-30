@@ -1,5 +1,5 @@
 from rest_framework import generics, permissions
-from .serializers import UserRegistrationSerializer, CustomTokenObtainPairSerializer
+from .serializers import UserRegistrationSerializer, CustomTokenObtainPairSerializer, UserDeviceSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_decode
 from django.contrib import messages
-from .models import CustomUser
+from .models import CustomUser, UserDevice
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -62,6 +62,7 @@ class LoggedInUserView(generics.RetrieveAPIView):
         # Return the currently logged-in user
         return self.request.user
     
+
 class UpdateLoggedInUserView(generics.UpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = CustomUserSerializer
@@ -71,15 +72,26 @@ class UpdateLoggedInUserView(generics.UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         user = self.get_object()
+
+        # Combine request data and files
         data = request.data.copy()
-        # Handle profile photo upload
-        if 'profile_photo' in request.FILES:
-            data['profile_photo'] = request.FILES['profile_photo']
-        
+        data.update(request.FILES)
+
+        # Check if the email is being updated and already exists for a different user
+        new_email = data.get('email', None)
+        if new_email and User.objects.filter(email=new_email).exclude(id=user.id).exists():
+            return Response(
+                {"email": ["A user with this email already exists."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Initialize the serializer with combined data
         serializer = self.get_serializer(user, data=data, partial=True)
+
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     
@@ -252,3 +264,20 @@ def refresh_token_view(request):
     response.set_cookie('refresh', new_tokens['refresh'], httponly=True, secure=True, samesite='Strict')
     return response
 
+# Device Settings 
+class LinkedDevicesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        devices = UserDevice.objects.filter(user=request.user).order_by('-last_active')
+        serializer = UserDeviceSerializer(devices, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class LogoutDeviceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, device_id, *args, **kwargs):
+        device = get_object_or_404(UserDevice, id=device_id, user=request.user)
+        device.delete()
+        return Response({"message": "Device successfully logged out and removed"}, status=status.HTTP_204_NO_CONTENT)

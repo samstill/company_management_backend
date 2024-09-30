@@ -84,6 +84,7 @@ REST_FRAMEWORK = {
 
 MIDDLEWARE = [
     #Custom Middleware
+    
 
 
     'corsheaders.middleware.CorsMiddleware',
@@ -95,6 +96,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'accounts.middleware.DeviceManagementMiddleware',
 ]
 
 ROOT_URLCONF = 'company_management.urls'
@@ -116,6 +118,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'company_management.wsgi.application'
+
 
 
 # Database
