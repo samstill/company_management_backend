@@ -11,7 +11,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ( 'email','password', 'first_name', 'last_name', 'role')
+        fields = ( 'email', 'phone_number' ,'password', 'first_name', 'last_name', 'role')
     
     def create(self, validated_data):
         # Get the request user from the context (request is passed in context in views)
@@ -43,7 +43,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'email', 'profile_photo', 'first_name', 'last_name', 'role']
+        fields = ['id', 'email','phone_number' ,'profile_photo', 'first_name', 'last_name', 'role']
         extra_kwargs = {
             'profile_photo': {'required': False},  # Make it optional
         }
@@ -55,21 +55,20 @@ class CustomUserSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(f'/api/accounts{obj.profile_photo.url}')
         return None  # If no photo, return None
 
-# Custom TokenObtainPairSerializer to include role in the JWT token payload
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
 
-        # Add custom claims
-        token['role'] = user.role
+        # Add custom claims (role)
+        token['role'] = user.role if hasattr(user, 'role') else 'user'  # Default role to 'user' if not set
         return token
 
     def validate(self, attrs):
         data = super().validate(attrs)
 
-        # Add extra responses here
-        data['role'] = self.user.role
+        # Add role in the response payload as well
+        data['role'] = self.user.role if hasattr(self.user, 'role') else 'user'
         return data
 
 class UserDeviceSerializer(serializers.ModelSerializer):

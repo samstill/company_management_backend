@@ -47,22 +47,29 @@ CORS_ALLOW_METHODS = [
 
 INSTALLED_APPS = [
     # Django apps
-    'accounts',
-    'employee',
-    'hotel',
-    'company', 
-    'rest_framework',
-    'corsheaders',
-
-    # Third party apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-]
 
+    # Third-party apps
+    'two_factor',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
+    'phonenumber_field',  # Add this
+    'two_factor.plugins.phonenumber',
+
+    # Your apps
+    'accounts',
+    'employee',
+    'hotel',
+    'company',
+    'rest_framework',
+    'corsheaders',
+]
 
 # JWT settings
 SIMPLE_JWT = {
@@ -71,7 +78,6 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
-
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -83,10 +89,6 @@ REST_FRAMEWORK = {
 }
 
 MIDDLEWARE = [
-    #Custom Middleware
-    
-
-
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -94,9 +96,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',  # This handles the 2FA middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'accounts.middleware.DeviceManagementMiddleware',
+    'accounts.middleware.DeviceManagementMiddleware',  # Your custom middleware
 ]
 
 ROOT_URLCONF = 'company_management.urls'
@@ -118,7 +121,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'company_management.wsgi.application'
-
 
 
 # Database
@@ -168,6 +170,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -202,3 +205,10 @@ DEFAULT_FROM_EMAIL = 'your_email@example.com'
 
 # Site URL (for constructing the verification link)
 SITE_URL = 'http://127.0.0.1:8000'  # Your domain name or localhost
+
+# Two-Factor Authentication Settings
+
+TWO_FACTOR_PATCH_ADMIN = True
+
+# Ensure JWT is not used for the admin panel login
+

@@ -7,6 +7,8 @@ from django.utils.translation import gettext_lazy as _
 from django.core.mail import send_mail
 from django.conf import settings
 from django.core.validators import FileExtensionValidator
+from phonenumber_field.modelfields import PhoneNumberField
+
 
 
 class CustomUserManager(BaseUserManager):
@@ -43,6 +45,7 @@ class CustomUser(AbstractUser, PermissionsMixin):
     email = models.EmailField(_('email address'), unique=True)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    phone_number = PhoneNumberField(_('phone number'), null=True, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
     profile_photo = models.ImageField(
     upload_to='profile_photos/',

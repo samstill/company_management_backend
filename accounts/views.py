@@ -24,6 +24,10 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import ListAPIView
 from rest_framework.filters import SearchFilter
+from django_otp import devices_for_user
+from two_factor.views import SetupView
+from django_otp.plugins.otp_totp.models import TOTPDevice
+
 
 
 User = get_user_model()
@@ -37,8 +41,37 @@ class UserRegistrationView(generics.CreateAPIView):
 
 # Custom token view to include role in the token
 class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer  # Use the custom serializer for token generation
+    serializer_class = CustomTokenObtainPairSerializer
     http_method_names = ['post', 'options']
+
+    def post(self, request, *args, **kwargs):
+        # Authenticate the user with username and password
+        user = authenticate(email=request.data.get('email'), password=request.data.get('password'))
+
+        if user is None:
+            return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Check if the user has any 2FA devices enabled
+        two_factor_devices = list(devices_for_user(user))
+        if two_factor_devices:
+            # 2FA is enabled for this user, so check for OTP token
+            otp_token = request.data.get('otp_token')
+            if not otp_token:
+                return Response({"detail": "2FA token required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Verify the OTP token
+            verified = False
+            for device in two_factor_devices:
+                if device.verify_token(otp_token):
+                    verified = True
+                    break
+
+            if not verified:
+                return Response({"detail": "Invalid 2FA token"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # If 2FA is either not enabled or successfully verified, generate the token
+        return super().post(request, *args, **kwargs)
+    
 
 
 
@@ -205,15 +238,32 @@ def verify_token_view(request):
 def login_view(request):
     email = request.data.get('email')
     password = request.data.get('password')
+    
+    # Authenticate user using email and password
     user = authenticate(request, email=email, password=password)
-
+    
     if user is not None:
         tokens = get_tokens_for_user(user)
+        
+        # Creating response
         response = JsonResponse({"message": "Login successful."})
-        # Set HTTP-only cookies
-        response.set_cookie('access', tokens['access'], httponly=True, secure=True, samesite='Strict')
-        response.set_cookie('refresh', tokens['refresh'], httponly=True, secure=True, samesite='Strict')
-        return Response(tokens, status=status.HTTP_200_OK)
+        
+        # Setting HTTP-only cookies for security
+        response.set_cookie(
+            'access', tokens['access'], httponly=True, secure=True, samesite='Strict'
+        )
+        response.set_cookie(
+            'refresh', tokens['refresh'], httponly=True, secure=True, samesite='Strict'
+        )
+        
+        # Returning the response with token info
+        return Response({
+            'message': 'Login successful',
+            'access_token': tokens['access'],
+            'refresh_token': tokens['refresh']
+        }, status=status.HTTP_200_OK)
+    
+    # Return unauthorized status if credentials are invalid
     return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
 @api_view(['POST'])
@@ -281,3 +331,27 @@ class LogoutDeviceView(APIView):
         device = get_object_or_404(UserDevice, id=device_id, user=request.user)
         device.delete()
         return Response({"message": "Device successfully logged out and removed"}, status=status.HTTP_204_NO_CONTENT)
+    
+
+class TwoFactorSetupView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """
+        Return the status of two-factor authentication setup for the logged-in user.
+        """
+        user = request.user
+        devices = devices_for_user(user)
+        if devices:
+            return Response({"detail": "Two-factor authentication is already set up."}, status=status.HTTP_200_OK)
+        return Response({"detail": "Two-factor authentication is not set up."}, status=status.HTTP_404_NOT_FOUND)
+
+    def post(self, request):
+        """
+        Set up two-factor authentication for the user.
+        """
+        user = request.user
+        # Generate a TOTP device for the user
+        device = TOTPDevice.objects.create(user=user, name="default", confirmed=False)
+        # Return a response with the secret key or QR code URL for the user to scan
+        return Response({"qr_code_url": device.config_url}, status=status.HTTP_201_CREATED)

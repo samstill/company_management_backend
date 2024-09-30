@@ -8,6 +8,15 @@ from django.utils.deprecation import MiddlewareMixin
 from django.utils import timezone
 
 
+import jwt
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.utils.deprecation import MiddlewareMixin
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.tokens import AccessToken
+from django.contrib.auth import login
+
+
 class RoleBasedAccessMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -49,3 +58,29 @@ class DeviceManagementMiddleware(MiddlewareMixin):
             )
             user_device.last_active = timezone.now()
             user_device.save()
+
+class AdminJWTAuthMiddleware(MiddlewareMixin):
+    """
+    Middleware that authenticates users in the admin panel using JWT tokens.
+    """
+    def process_request(self, request):
+        if request.path.startswith('/admin/'):
+
+            # Get the JWT token from the Authorization header or cookies
+            token = request.COOKIES.get('access') or request.META.get('HTTP_AUTHORIZATION', None)
+
+            if token:
+                if token.startswith('Bearer '):
+                    token = token.split(' ')[1]
+
+                try:
+                    # Decode and verify the token
+                    access_token = AccessToken(token)
+                    user_id = access_token['user_id']
+
+                    # Get the user and log them in
+                    user = User.objects.get(id=user_id)
+                    if user.is_active:
+                        login(request, user)
+                except (jwt.ExpiredSignatureError, jwt.DecodeError, User.DoesNotExist, TokenError, InvalidToken):
+                    pass  # Token is invalid, continue without login

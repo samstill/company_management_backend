@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin  # Make sure this import is here
 from .models import CustomUser, UserDevice
 from django.utils.translation import gettext_lazy as _
-
+from django.contrib.admin import AdminSite
 # Define the UserDeviceInline class to show devices in the CustomUser admin page
 class UserDeviceInline(admin.TabularInline):
     model = UserDevice
@@ -12,13 +12,13 @@ class UserDeviceInline(admin.TabularInline):
 
 # Extend the CustomUserAdmin class to include UserDeviceInline
 class CustomUserAdmin(UserAdmin):
-    list_display = ['email', 'first_name', 'last_name', 'role', 'is_staff', 'is_active']
+    list_display = ['email', 'phone_number' ,'first_name', 'last_name', 'role', 'is_staff', 'is_active']
     search_fields = ['email', 'first_name', 'last_name']
     list_filter = ['is_staff', 'is_superuser', 'is_active', 'role']
     
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        (_('Personal info'), {'fields': ('profile_photo', 'first_name', 'last_name')}),
+        (_('Personal info'), {'fields': ('profile_photo', 'first_name', 'last_name', 'phone_number')}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         (_('Role'), {'fields': ('role',)}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
@@ -34,6 +34,7 @@ class CustomUserAdmin(UserAdmin):
     ordering = ['email']
     
     inlines = [UserDeviceInline]
+
 
 # Register the CustomUser model with the updated CustomUserAdmin
 admin.site.register(CustomUser, CustomUserAdmin)

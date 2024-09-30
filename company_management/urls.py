@@ -2,7 +2,7 @@
 URL configuration for company_management project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.1/topics/http/urls/
+    https://docs.djangoproject.com/en/5.1/topics/http/urls/cod
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -23,4 +23,7 @@ urlpatterns = [
     path('api/employee/', include('employee.urls')),
     path('api/hotel/', include('hotel.urls')),
     path('api/company/', include('company.urls')),
+
+    
+    
 ]
