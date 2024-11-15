@@ -1,0 +1,212 @@
+2024-11-15 13:52:52,344 DEBUG cd frappe-bench && python3 -m venv env
+2024-11-15 13:52:55,724 DEBUG cd frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade pip
+2024-11-15 13:52:57,477 DEBUG cd frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet wheel
+2024-11-15 13:52:59,171 LOG Getting frappe
+2024-11-15 13:52:59,171 DEBUG cd frappe-bench/apps && git clone https://github.com/frappe/frappe.git --branch version-15 --depth 1 --origin upstream
+2024-11-15 13:53:02,985 LOG Installing frappe
+2024-11-15 13:53:02,985 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/frappe 
+2024-11-15 13:54:15,247 DEBUG cd /home/harshit/frappe-bench/apps/frappe && yarn install --check-files
+2024-11-15 13:54:37,262 WARNING restart failed: Couldn't find supervisorctl in PATH
+2024-11-15 13:54:37,262 DEBUG cd frappe-bench && bench build
+2024-11-15 13:54:37,419 INFO /home/harshit/env/bin/bench build
+2024-11-15 13:55:03,628 LOG setting up backups
+2024-11-15 13:55:03,646 LOG backups were set up
+2024-11-15 13:55:03,646 INFO Bench frappe-bench initialized
+2024-11-15 13:55:39,879 INFO /home/harshit/env/bin/bench new-site gosiru
+2024-11-15 13:56:42,671 INFO /home/harshit/env/bin/bench get-app payments
+2024-11-15 13:56:43,079 LOG Getting payments
+2024-11-15 13:56:43,080 DEBUG cd ./apps && git clone https://github.com/frappe/payments.git  --depth 1 --origin upstream
+2024-11-15 13:56:43,997 LOG Installing payments
+2024-11-15 13:56:43,997 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/payments 
+2024-11-15 13:56:50,777 DEBUG bench build --app payments
+2024-11-15 13:56:50,918 INFO /home/harshit/env/bin/bench build --app payments
+2024-11-15 13:56:53,037 WARNING restart failed: Couldn't find supervisorctl in PATH
+2024-11-15 13:57:15,763 INFO /home/harshit/env/bin/bench get-app --branch version-15.42.0 erpnext
+2024-11-15 13:57:16,196 LOG Getting erpnext
+2024-11-15 13:57:16,196 DEBUG cd ./apps && git clone https://github.com/frappe/erpnext.git --branch version-15.42.0 --depth 1 --origin upstream
+2024-11-15 13:57:16,791 WARNING cd ./apps && git clone https://github.com/frappe/erpnext.git --branch version-15.42.0 --depth 1 --origin upstream executed with exit code 128
+2024-11-15 13:57:16,792 WARNING /home/harshit/env/bin/bench get-app --branch version-15.42.0 erpnext executed with exit code 1
+2024-11-15 13:57:36,204 INFO /home/harshit/env/bin/bench get-app --branch version-15 erpnext
+2024-11-15 13:57:36,646 LOG Getting erpnext
+2024-11-15 13:57:36,646 DEBUG cd ./apps && git clone https://github.com/frappe/erpnext.git --branch version-15 --depth 1 --origin upstream
+2024-11-15 13:57:40,798 LOG Installing erpnext
+2024-11-15 13:57:40,798 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/erpnext 
+2024-11-15 13:57:54,730 DEBUG cd /home/harshit/frappe-bench/apps/erpnext && yarn install --check-files
+2024-11-15 13:57:55,315 DEBUG bench build --app erpnext
+2024-11-15 13:57:55,448 INFO /home/harshit/env/bin/bench build --app erpnext
+2024-11-15 13:57:58,711 WARNING restart failed: Couldn't find supervisorctl in PATH
+2024-11-15 13:58:07,815 INFO /home/harshit/env/bin/bench get-app hrms
+2024-11-15 13:58:08,222 LOG Getting hrms
+2024-11-15 13:58:08,222 DEBUG cd ./apps && git clone https://github.com/frappe/hrms.git  --depth 1 --origin upstream
+2024-11-15 13:58:09,829 LOG Installing hrms
+2024-11-15 13:58:09,830 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/hrms 
+2024-11-15 13:58:11,924 DEBUG cd /home/harshit/frappe-bench/apps/hrms && yarn install --check-files
+2024-11-15 13:59:08,323 DEBUG bench build --app hrms
+2024-11-15 13:59:08,469 INFO /home/harshit/env/bin/bench build --app hrms
+2024-11-15 13:59:41,054 WARNING restart failed: Couldn't find supervisorctl in PATH
+2024-11-15 13:59:57,763 INFO /home/harshit/env/bin/bench --site gosiru install-app erpnext
+2024-11-15 14:01:14,729 INFO /home/harshit/env/bin/bench --site gosiru install-app hrms
+2024-11-15 14:02:07,602 INFO /home/harshit/env/bin/bench --site gosiru install-app hrms
+2024-11-15 14:02:20,683 INFO /home/harshit/env/bin/bench --site gosiru enable-scheduler
+2024-11-15 14:02:33,492 INFO /home/harshit/env/bin/bench --site gosiru set-maintenance-mode off
+2024-11-15 14:03:51,146 INFO /home/harshit/env/bin/bench --site gosiru set-maintenance-mode off
+2024-11-15 14:04:12,880 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:04:12,880 WARNING superuser privileges required for this command
+2024-11-15 14:05:01,271 INFO /home/harshit/env/bin/bench setup nginx
+2024-11-15 14:07:28,691 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:07:28,691 WARNING superuser privileges required for this command
+2024-11-15 14:08:45,950 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:08:45,959 DEBUG sudo /home/harshit/env/bin/python3 -m pip install ansible
+2024-11-15 14:09:16,814 DEBUG bench setup role fail2ban
+2024-11-15 14:09:16,815 WARNING /home/harshit/env/bin/bench setup production harshit executed with exit code 1
+2024-11-15 14:09:32,573 INFO /home/harshit/env/bin/bench setup nginx
+2024-11-15 14:11:18,990 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:11:18,995 DEBUG sudo /home/harshit/env/bin/python3 -m pip install ansible
+2024-11-15 14:11:19,671 DEBUG bench setup role fail2ban
+2024-11-15 14:11:19,672 WARNING /home/harshit/env/bin/bench setup production harshit executed with exit code 1
+2024-11-15 14:12:03,035 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:12:03,042 DEBUG sudo /home/harshit/env/bin/python3 -m pip install ansible
+2024-11-15 14:12:03,769 DEBUG bench setup role fail2ban
+2024-11-15 14:12:03,770 WARNING /home/harshit/env/bin/bench setup production harshit executed with exit code 1
+2024-11-15 14:12:39,268 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:12:39,274 DEBUG sudo /home/harshit/env/bin/python3 -m pip install ansible
+2024-11-15 14:12:39,925 DEBUG bench setup role fail2ban
+2024-11-15 14:12:39,926 WARNING /home/harshit/env/bin/bench setup production harshit executed with exit code 1
+2024-11-15 14:12:44,259 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:12:44,259 WARNING superuser privileges required for this command
+2024-11-15 14:13:00,580 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:13:00,586 DEBUG sudo /home/harshit/env/bin/python3 -m pip install ansible
+2024-11-15 14:13:01,249 DEBUG bench setup role fail2ban
+2024-11-15 14:13:01,250 WARNING /home/harshit/env/bin/bench setup production harshit executed with exit code 1
+2024-11-15 14:13:09,126 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:13:09,131 DEBUG sudo /home/harshit/env/bin/python3 -m pip install ansible
+2024-11-15 14:13:09,777 DEBUG bench setup role fail2ban
+2024-11-15 14:13:09,778 WARNING /home/harshit/env/bin/bench setup production harshit executed with exit code 1
+2024-11-15 14:14:02,609 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:14:02,615 DEBUG sudo /home/harshit/env/bin/python3 -m pip install ansible
+2024-11-15 14:14:03,339 DEBUG bench setup role fail2ban
+2024-11-15 14:14:03,340 WARNING /home/harshit/env/bin/bench setup production harshit executed with exit code 1
+2024-11-15 14:14:10,246 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:14:10,253 DEBUG sudo /home/harshit/env/bin/python3 -m pip install ansible
+2024-11-15 14:14:10,933 DEBUG bench setup role fail2ban
+2024-11-15 14:14:10,933 WARNING /home/harshit/env/bin/bench setup production harshit executed with exit code 1
+2024-11-15 14:14:51,301 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:14:51,301 WARNING superuser privileges required for this command
+2024-11-15 14:15:26,716 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:15:26,723 DEBUG sudo /home/harshit/env/bin/python3 -m pip install ansible
+2024-11-15 14:15:27,370 DEBUG bench setup role fail2ban
+2024-11-15 14:15:27,370 WARNING /home/harshit/env/bin/bench setup production harshit executed with exit code 1
+2024-11-15 14:15:57,936 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:15:57,942 DEBUG bench setup role fail2ban
+2024-11-15 14:15:58,074 INFO /home/harshit/env/bin/bench setup role fail2ban
+2024-11-15 14:16:20,291 DEBUG bench setup role nginx
+2024-11-15 14:16:20,449 INFO /home/harshit/env/bin/bench setup role nginx
+2024-11-15 14:16:40,301 LOG Updated supervisord.conf: 'chmod' changed from '0700                       ; sockef file mode (default 0700)' to '0760'
+2024-11-15 14:16:40,302 LOG Updated supervisord.conf: 'chown' changed from '' to 'harshit:harshit'
+2024-11-15 14:16:45,763 DEBUG sudo /usr/sbin/nginx -t
+2024-11-15 14:16:45,784 DEBUG sudo systemctl reload nginx
+2024-11-15 14:20:04,606 INFO /home/harshit/env/bin/bench setup production harshit
+2024-11-15 14:20:04,606 WARNING superuser privileges required for this command
+2024-11-15 14:22:42,646 INFO /home/harshit/env/bin/bench start
+2024-11-15 14:22:43,116 INFO /home/harshit/env/bin/bench worker
+2024-11-15 14:22:43,261 INFO /home/harshit/env/bin/bench serve --port 8000
+2024-11-15 14:22:43,264 INFO /home/harshit/env/bin/bench watch
+2024-11-15 14:22:43,270 INFO /home/harshit/env/bin/bench schedule
+2024-11-15 14:23:35,420 INFO /home/harshit/env/bin/bench start
+2024-11-15 14:23:35,849 INFO /home/harshit/env/bin/bench watch
+2024-11-15 14:23:35,962 INFO /home/harshit/env/bin/bench worker
+2024-11-15 14:23:36,057 INFO /home/harshit/env/bin/bench schedule
+2024-11-15 14:23:36,061 INFO /home/harshit/env/bin/bench serve --port 8000
+2024-11-15 17:08:54,080 INFO /home/harshit/env/bin/bench
+2024-11-15 17:09:05,985 INFO /home/harshit/env/bin/bench migrate
+2024-11-15 17:09:07,066 INFO /home/harshit/env/bin/bench update
+2024-11-15 17:09:07,939 WARNING shallow_clone is set in your bench config.
+However without passing the --reset flag, your repositories will be unshallowed.
+To avoid this, cancel this operation and run `bench update --reset`.
+
+Consider the consequences of `git reset --hard` on your apps before you run that.
+To avoid seeing this warning, set shallow_clone to false in your common_site_config.json
+		
+2024-11-15 17:09:21,211 WARNING /home/harshit/env/bin/bench update executed with exit code 1
+2024-11-15 17:10:26,187 INFO /home/harshit/env/bin/bench migrate
+2024-11-15 17:10:36,064 INFO /home/harshit/env/bin/bench migrate --gosiru
+2024-11-15 17:10:43,766 INFO /home/harshit/env/bin/bench update
+2024-11-15 17:10:44,688 WARNING shallow_clone is set in your bench config.
+However without passing the --reset flag, your repositories will be unshallowed.
+To avoid this, cancel this operation and run `bench update --reset`.
+
+Consider the consequences of `git reset --hard` on your apps before you run that.
+To avoid seeing this warning, set shallow_clone to false in your common_site_config.json
+		
+2024-11-15 17:10:57,014 WARNING /home/harshit/env/bin/bench update executed with exit code 1
+2024-11-15 17:12:21,505 INFO /home/harshit/env/bin/bench update
+2024-11-15 17:12:22,369 WARNING shallow_clone is set in your bench config.
+However without passing the --reset flag, your repositories will be unshallowed.
+To avoid this, cancel this operation and run `bench update --reset`.
+
+Consider the consequences of `git reset --hard` on your apps before you run that.
+To avoid seeing this warning, set shallow_clone to false in your common_site_config.json
+		
+2024-11-15 17:12:35,587 DEBUG cd /home/harshit/frappe-bench/apps/frappe && git fetch upstream --unshallow
+2024-11-15 17:13:17,890 LOG pulling frappe
+2024-11-15 17:13:17,890 DEBUG cd /home/harshit/frappe-bench/apps/frappe && git pull  upstream version-15
+2024-11-15 17:13:18,527 DEBUG cd /home/harshit/frappe-bench/apps/frappe && find . -name "*.pyc" -delete
+2024-11-15 17:13:18,705 DEBUG cd /home/harshit/frappe-bench/apps/hrms && git fetch upstream --unshallow
+2024-11-15 17:13:25,903 LOG pulling hrms
+2024-11-15 17:13:25,903 DEBUG cd /home/harshit/frappe-bench/apps/hrms && git pull  upstream develop
+2024-11-15 17:13:26,481 DEBUG cd /home/harshit/frappe-bench/apps/hrms && find . -name "*.pyc" -delete
+2024-11-15 17:13:27,805 DEBUG cd /home/harshit/frappe-bench/apps/payments && git fetch upstream --unshallow
+2024-11-15 17:13:28,744 LOG pulling payments
+2024-11-15 17:13:28,744 DEBUG cd /home/harshit/frappe-bench/apps/payments && git pull  upstream develop
+2024-11-15 17:13:29,311 DEBUG cd /home/harshit/frappe-bench/apps/payments && find . -name "*.pyc" -delete
+2024-11-15 17:13:29,318 DEBUG cd /home/harshit/frappe-bench/apps/erpnext && git fetch upstream --unshallow
+2024-11-15 17:15:00,708 LOG pulling erpnext
+2024-11-15 17:15:00,709 DEBUG cd /home/harshit/frappe-bench/apps/erpnext && git pull  upstream version-15
+2024-11-15 17:15:01,489 DEBUG cd /home/harshit/frappe-bench/apps/erpnext && find . -name "*.pyc" -delete
+2024-11-15 17:15:01,577 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade pip
+2024-11-15 17:15:02,808 LOG Installing frappe
+2024-11-15 17:15:02,809 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/frappe 
+2024-11-15 17:15:06,407 DEBUG cd /home/harshit/frappe-bench/apps/frappe && yarn install --check-files
+2024-11-15 17:15:08,991 LOG Installing hrms
+2024-11-15 17:15:08,991 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/hrms 
+2024-11-15 17:15:11,317 DEBUG cd /home/harshit/frappe-bench/apps/hrms && yarn install --check-files
+2024-11-15 17:15:43,615 LOG Installing payments
+2024-11-15 17:15:43,616 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/payments 
+2024-11-15 17:15:45,888 LOG Installing erpnext
+2024-11-15 17:15:45,888 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/erpnext 
+2024-11-15 17:15:48,118 DEBUG cd /home/harshit/frappe-bench/apps/erpnext && yarn install --check-files
+2024-11-15 17:26:12,797 DEBUG cd /home/harshit/frappe-bench && sudo supervisorctl restart frappe:
+2024-11-15 17:26:13,011 WARNING cd /home/harshit/frappe-bench && sudo supervisorctl restart frappe: executed with exit code 2
+2024-11-15 17:26:13,011 WARNING /home/harshit/env/bin/bench update executed with exit code 1
+2024-11-15 17:27:30,750 INFO /home/harshit/env/bin/bench setup supervisor
+2024-11-15 17:27:30,932 LOG Updated supervisord.conf: 'chmod' changed from '0700                       ; sockef file mode (default 0700)' to '0760'
+2024-11-15 17:27:30,932 LOG Updated supervisord.conf: 'chown' changed from '' to 'harshit:harshit'
+2024-11-15 17:28:17,842 INFO /home/harshit/env/bin/bench restart
+2024-11-15 17:28:18,257 DEBUG cd /home/harshit/frappe-bench && sudo supervisorctl restart frappe:
+2024-11-15 17:28:18,457 WARNING cd /home/harshit/frappe-bench && sudo supervisorctl restart frappe: executed with exit code 2
+2024-11-15 17:28:18,457 WARNING /home/harshit/env/bin/bench restart executed with exit code 1
+2024-11-15 17:28:29,528 INFO /home/harshit/env/bin/bench restart
+2024-11-15 17:28:29,952 DEBUG cd /home/harshit/frappe-bench && sudo supervisorctl restart frappe:
+2024-11-15 17:28:30,167 WARNING cd /home/harshit/frappe-bench && sudo supervisorctl restart frappe: executed with exit code 2
+2024-11-15 17:28:30,168 WARNING /home/harshit/env/bin/bench restart executed with exit code 1
+2024-11-15 17:29:09,500 INFO /home/harshit/env/bin/bench setup supervisor
+2024-11-15 17:29:09,684 LOG Updated supervisord.conf: 'chmod' changed from '0700                       ; sockef file mode (default 0700)' to '0760'
+2024-11-15 17:29:09,684 LOG Updated supervisord.conf: 'chown' changed from '' to 'harshit:harshit'
+2024-11-15 17:29:41,213 INFO /home/harshit/env/bin/bench restart
+2024-11-15 17:29:41,643 DEBUG cd /home/harshit/frappe-bench && sudo supervisorctl restart frappe:
+2024-11-15 17:29:41,832 WARNING cd /home/harshit/frappe-bench && sudo supervisorctl restart frappe: executed with exit code 2
+2024-11-15 17:29:41,832 WARNING /home/harshit/env/bin/bench restart executed with exit code 1
+2024-11-15 17:30:14,184 INFO /home/harshit/env/bin/bench start
+2024-11-15 17:30:33,695 INFO /home/harshit/env/bin/bench setup requirements
+2024-11-15 17:30:33,701 DEBUG /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade pip
+2024-11-15 17:30:34,824 LOG Installing frappe
+2024-11-15 17:30:34,824 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/frappe 
+2024-11-15 17:30:38,268 DEBUG cd /home/harshit/frappe-bench/apps/frappe && yarn install --check-files
+2024-11-15 17:30:40,888 LOG Installing hrms
+2024-11-15 17:30:40,888 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/hrms 
+2024-11-15 17:30:43,076 DEBUG cd /home/harshit/frappe-bench/apps/hrms && yarn install --check-files
+2024-11-15 17:31:04,079 LOG Installing payments
+2024-11-15 17:31:04,079 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/payments 
+2024-11-15 17:31:06,342 LOG Installing erpnext
+2024-11-15 17:31:06,342 DEBUG cd /home/harshit/frappe-bench && /home/harshit/frappe-bench/env/bin/python -m pip install --quiet --upgrade -e /home/harshit/frappe-bench/apps/erpnext 
+2024-11-15 17:31:08,414 DEBUG cd /home/harshit/frappe-bench/apps/erpnext && yarn install --check-files

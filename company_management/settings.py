@@ -16,6 +16,7 @@ import os
 from dotenv import load_dotenv
 import environ
 import urllib3
+from celery.schedules import crontab
 
 # Load environment variables from .env file
 load_dotenv()
@@ -172,7 +173,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -218,9 +219,9 @@ ERPNEXT_API_KEY = os.getenv('ERPNEXT_API_KEY', '')
 ERPNEXT_API_SECRET = os.getenv('ERPNEXT_API_SECRET', '')
 
 CELERY_BEAT_SCHEDULE = {
-    'sync-erpnext-roles': {
-        'task': 'accounts.tasks.sync_erpnext_roles',
-        'schedule': 3600.0,  # Run every hour
+    'sync-users-every-30-minutes': {
+        'task': 'your_app_name.tasks.sync_users_from_erpnext',
+        'schedule': crontab(minute='*/30'),  # Every 30 minutes
     },
 }
 
@@ -228,10 +229,17 @@ CELERY_BEAT_SCHEDULE = {
 ERPNEXT_WEBHOOK_SECRET = os.getenv('ERPNEXT_WEBHOOK_SECRET', 'your-secret-here')
 
 # Frappe API Settings
-FRAPPE_API_KEY = '89f576368e5a6ad'
-FRAPPE_API_SECRET = '764b0ac71e4310e'
-FRAPPE_BASE_URL = 'http://165.22.220.125'  # Consider using HTTPS in production
+FRAPPE_API_KEY = 'f8724b019b26e46'
+FRAPPE_API_SECRET = '1cb0fd6e7c4e24f'
+FRAPPE_BASE_URL = 'http://64.227.143.158'  # Consider using HTTPS in production
 FRAPPE_API_TIMEOUT = (30, 30)  # (connect timeout, read timeout) in seconds
 
 # For development only - disable SSL verification warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Add Celery configuration
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Example for Redis
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
+

@@ -460,3 +460,23 @@ class ERPNextWebhookView(APIView):
                 {'error': str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+@csrf_exempt
+def erpnext_webhook(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        email = data.get('email')
+        action = data.get('action')  # e.g., 'create', 'update', 'delete'
+        
+        if action == 'create':
+            # Handle user creation
+            pass  # Implement user creation logic
+        elif action == 'update':
+            # Handle user update
+            pass  # Implement user update logic
+        elif action == 'delete':
+            # Handle user deletion
+            pass  # Implement user deletion logic
+        
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'invalid method'}, status=400)

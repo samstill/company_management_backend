@@ -1,29 +1,24 @@
-from django.utils import timezone 
-from django.contrib.auth.models import Group, Permission
+import logging
+from django.utils import timezone
 from django.contrib.auth.models import AbstractUser, BaseUserManager, PermissionsMixin
 from django.db import models
-from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from django.core.mail import send_mail
 from django.conf import settings
-from django.core.validators import FileExtensionValidator
-from django.db import transaction
+from .services.erpnext_service import ERPNextService
 from .services.erpnext_client import ERPNextClient
-import requests
-from requests.exceptions import RequestException
-from django.core.exceptions import ValidationError
-from django.db import models
-from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-from django.conf import settings
+from requests.packages.urllib3.util.retry import Retry
+from .tasks import sync_user_to_erpnext_task  # Import the task
 
 # Constants for Frappe API URLs
 FRAPPE_BASE_URL = settings.FRAPPE_BASE_URL
 FRAPPE_API_KEY = settings.FRAPPE_API_KEY
 FRAPPE_API_SECRET = settings.FRAPPE_API_SECRET
+
+logger = logging.getLogger(__name__)
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email: str, password: str = None, **extra_fields) -> 'CustomUser':
@@ -35,6 +30,10 @@ class CustomUserManager(BaseUserManager):
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
+        
+        # Sync with ERPNext asynchronously
+        sync_user_to_erpnext_task.delay(user.id)
+        
         return user
 
     def create_superuser(self, email: str, password: str = None, **extra_fields) -> 'CustomUser':
@@ -48,7 +47,6 @@ class CustomUserManager(BaseUserManager):
             raise ValueError(_("Superuser must have is_superuser=True."))
 
         return self.create_user(email, password=password, **extra_fields)
-
 
 class CustomUser(AbstractUser, PermissionsMixin):
     username = None  # Remove the username field
@@ -83,38 +81,38 @@ class CustomUser(AbstractUser, PermissionsMixin):
     role = models.ForeignKey('Role', on_delete=models.SET_NULL, null=True, blank=True, related_name='users', verbose_name=_('Role'))
 
     def save(self, *args, **kwargs):
-        """Override save method to sync user data to Frappe."""
-        try:
-            super().save(*args, **kwargs)
-            if not self.first_name:
-                raise ValidationError("First name is required")
-            self._sync_user_to_frappe()
-        except ValidationError as e:
-            if self.pk:
-                self.refresh_from_db()
-            raise e
-        except Exception as e:
-            if self.pk:
-                self.refresh_from_db()
-            raise ValidationError(f"Unexpected error: {str(e)}")
+        """Override save method to handle user updates and sync with ERPNext."""
+        super().save(*args, **kwargs)
+        erp_service = ERPNextService()
+        user_data = self._prepare_user_data()
+        
+        if self.pk:  # If the user already exists, update
+            erp_service.update_user(user_data)  # Pass user_data here
+        else:  # If it's a new user, create
+            erp_service.create_user(user_data)
 
-    def _sync_user_to_frappe(self):
-        """Sync user data to Frappe."""
-        frappe_service = FrappeService()
-        user_exists = frappe_service.check_user_exists(self.email)
+    def _prepare_user_data(self) -> dict:
+        """Prepare user data for ERPNext."""
+        return {
+            "email": self.email,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "is_active": self.is_active,  # Include is_active if needed
+            # Add other fields as necessary
+        }
 
-        if user_exists:
-            frappe_service.update_user(self)
-        else:
-            frappe_service.create_user(self)
+    def delete(self, *args, **kwargs):
+        """Override delete method to remove user from ERPNext."""
+        erp_service = ERPNextService()
+        erp_service.delete_user(self.pk)
+        super().delete(*args, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.email
 
     def email_user(self, subject: str, message: str, from_email: str = None, **kwargs):
         """Sends an email to this user."""
         send_mail(subject, message, from_email, [self.email], **kwargs)
-
 
 class FrappeService:
     """Service class to handle Frappe API interactions."""
@@ -130,17 +128,6 @@ class FrappeService:
         session.mount("http://", adapter)
         session.mount("https://", adapter)
         return session
-
-    def check_user_exists(self, email: str) -> bool:
-        """Check if the user exists in Frappe."""
-        check_url = f'{FRAPPE_BASE_URL}/api/method/frappe.client.get_value'
-        check_data = {
-            "doctype": "User",
-            "filters": {"email": email},
-            "fieldname": ["name"]
-        }
-        response = self._make_request(check_url, check_data)
-        return response.ok and response.json().get('message')
 
     def create_user(self, user: CustomUser):
         """Create a new user in Frappe."""
@@ -176,6 +163,15 @@ class FrappeService:
         url = f'{FRAPPE_BASE_URL}/api/method/frappe.client.set_value'
         self._make_request(url, data)
 
+    def delete_user(self, user_id: str):
+        """Delete user from Frappe."""
+        data = {
+            "doctype": "User",
+            "name": user_id
+        }
+        url = f'{FRAPPE_BASE_URL}/api/method/frappe.client.delete'
+        self._make_request(url, data)
+
     def _make_request(self, url: str, data: dict):
         """Make a request to the Frappe API with error handling."""
         try:
@@ -195,6 +191,17 @@ class FrappeService:
             'Authorization': f'token {FRAPPE_API_KEY}:{FRAPPE_API_SECRET}',
             'Content-Type': 'application/json'
         }
+
+    def check_user_exists(self, email: str) -> bool:
+        """Check if the user exists in Frappe."""
+        check_url = f'{FRAPPE_BASE_URL}/api/method/frappe.client.get_value'
+        check_data = {
+            "doctype": "User",
+            "filters": {"email": email},
+            "fieldname": ["name"]
+        }
+        response = self._make_request(check_url, check_data)
+        return response.ok and response.json().get('message')
 
 class UserDevice(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)

@@ -1,0 +1,57 @@
+2024-11-15 16:49:20,908 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'mijoxo6005@avzong.com', 'first_name': 'Pranav', 'last_name': 'Salunkhe', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 16:49:23,098 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'mijoxo6005@avzong.com', 'first_name': 'Pranav', 'last_name': 'Salunkhe', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 16:49:24,186 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'mijoxo6005@avzong.com', 'first_name': 'Pranav', 'last_name': 'Salunkhe', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 16:49:26,274 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'mijoxo6005@avzong.com', 'first_name': 'Pranav', 'last_name': 'Salunkhe', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 16:54:28,276 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'email@email.com', 'first_name': 'Harshit', 'last_name': 'Padha', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 16:54:28,359 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'email@email.com', 'first_name': 'Harshit', 'last_name': 'Padha', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 16:54:29,454 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'email@email.com', 'first_name': 'Harshit', 'last_name': 'Padha', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 16:54:31,545 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'email@email.com', 'first_name': 'Harshit', 'last_name': 'Padha', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:00:48,510 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'mijoxo6005@avzong.com', 'first_name': 'Pranav', 'last_name': 'Salunkhe', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:00:48,593 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'mijoxo6005@avzong.com', 'first_name': 'Pranav', 'last_name': 'Salunkhe', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:00:49,682 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'mijoxo6005@avzong.com', 'first_name': 'Pranav', 'last_name': 'Salunkhe', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:00:51,764 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'mijoxo6005@avzong.com', 'first_name': 'Pranav', 'last_name': 'Salunkhe', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:05:24,005 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'apple@nivod.com', 'first_name': 'Apple', 'last_name': 'Nivod', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:05:59,721 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'apple@nivod.com', 'first_name': 'Apple', 'last_name': 'Nivod', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:06:34,665 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'apple@nivod.com', 'first_name': 'Apple', 'last_name': 'Nivod', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:32:59,567 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'harshit842@yahoo.com', 'first_name': 'Harshit', 'last_name': 'Padha', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:32:59,653 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'harshit842@yahoo.com', 'first_name': 'Harshit', 'last_name': 'Padha', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:33:00,742 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'harshit842@yahoo.com', 'first_name': 'Harshit', 'last_name': 'Padha', 'enabled': 1, 'cmd': 'frappe.client.insert'}
+2024-11-15 17:33:02,832 ERROR frappe New Exception collected in error log
+Site: gosiru
+Form Dict: {'doctype': 'User', 'email': 'harshit842@yahoo.com', 'first_name': 'Harshit', 'last_name': 'Padha', 'enabled': 1, 'cmd': 'frappe.client.insert'}
