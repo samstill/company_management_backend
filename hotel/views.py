@@ -5,6 +5,10 @@ from .serializers import RoomSerializer, BookingSerializer, ReviewSerializer, Pa
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.http import JsonResponse
+from .forms import BookingForm
 
 
 # Room ViewSet
@@ -91,3 +95,51 @@ class PaymentViewSet(viewsets.ModelViewSet):
         transaction_id = "12345ABC"  # Dummy transaction ID
         payment = serializer.save(transaction_id=transaction_id)
         payment.complete_payment(transaction_id)
+
+
+def create_booking(request):
+    if request.method == 'POST':
+        form = BookingForm(request.POST)
+        if form.is_valid():
+            booking = form.save(commit=False)
+            booking.customer = request.user
+            booking.status = 'pending'
+            
+            try:
+                booking.save()
+                messages.success(request, 'Booking created successfully!')
+                return redirect('booking_detail', pk=booking.pk)
+            except ValueError as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = BookingForm()
+    
+    return render(request, 'hotel/booking_form.html', {'form': form})
+
+def get_available_rooms(request):
+    """AJAX view to get available rooms for selected dates"""
+    check_in = request.GET.get('check_in')
+    check_out = request.GET.get('check_out')
+    
+    if not check_in or not check_out:
+        return JsonResponse({'error': 'Both dates are required'}, status=400)
+    
+    try:
+        form = BookingForm(initial={
+            'check_in_date': check_in,
+            'check_out_date': check_out
+        })
+        rooms = form.get_available_rooms(check_in, check_out)
+        
+        room_data = [{
+            'id': room.id,
+            'number': room.room_number,
+            'type': room.get_room_type_display(),
+            'price': str(room.price_per_night)
+        } for room in rooms]
+        
+        return JsonResponse({'rooms': room_data})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)

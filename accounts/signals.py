@@ -1,53 +1,94 @@
-from user_agents import parse
-from django.db.models.signals import post_save
-from django.contrib.auth.signals import user_logged_in, user_logged_out
-from django.utils import timezone
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.urls import reverse
-from django.core.mail import send_mail
-from django.conf import settings
-from .models import CustomUser, UserDevice
+from django.contrib.auth import get_user_model
+from .models import CustomUser, UserDevice, Role
+from .services.erpnext_client import ERPNextClient
+import logging
 
-@receiver(post_save, sender=CustomUser)
-def send_verification_email(sender, instance, created, **kwargs):
+logger = logging.getLogger(__name__)
+
+User = get_user_model()
+
+@receiver(pre_save, sender=User)
+def sync_user_role(sender, instance, **kwargs):
+    """Sync role changes to ERPNext"""
+    try:
+        # Get the old instance if it exists
+        if instance.pk:
+            old_instance = User.objects.get(pk=instance.pk)
+            old_role = old_instance.role
+        else:
+            old_role = None
+
+        # If role has changed and user exists in ERPNext
+        if instance.erpnext_user_id and instance.role != old_role:
+            client = ERPNextClient()
+            
+            # Determine ERPNext roles based on Django role
+            erpnext_roles = []
+            
+            if instance.is_customer():
+                erpnext_roles.append('Customer')
+            elif instance.is_employee():
+                erpnext_roles.append('Employee')
+            elif instance.is_manager():
+                erpnext_roles.extend(['Employee', 'Manager'])
+            elif instance.is_executive_director():
+                erpnext_roles.extend(['Employee', 'Manager', 'System Manager'])
+            elif instance.is_admin():
+                erpnext_roles.extend(['Administrator', 'System Manager'])
+
+            # Update roles in ERPNext
+            client.make_request(
+                'POST',
+                'frappe.client.set_value',
+                data={
+                    'doctype': 'User',
+                    'name': instance.erpnext_user_id,
+                    'fieldname': 'roles',
+                    'value': [{'role': role} for role in erpnext_roles]
+                }
+            )
+            
+            instance.erpnext_sync_status = 'synced'
+            
+    except Exception as e:
+        logger.error(f"Failed to sync role to ERPNext: {str(e)}")
+        instance.erpnext_sync_status = 'failed'
+        instance.erpnext_sync_error = str(e)
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    """Handle post-save actions for User model"""
     if created:
-        token_generator = PasswordResetTokenGenerator()
-        token = token_generator.make_token(instance)
-        uid = instance.pk
-        verification_link = reverse('accounts:verify-email', kwargs={'uidb64': uid, 'token': token})
-        verification_url = f"{settings.SITE_URL}{verification_link}"
+        try:
+            # Create user in ERPNext if not already done
+            if not instance.erpnext_user_id:
+                instance._create_erpnext_user()
+        except Exception as e:
+            logger.error(f"Failed to create user in ERPNext: {str(e)}")
 
-        send_mail(
-            'Verify your email',
-            f'Click the link to verify your email: {verification_url}',
-            settings.DEFAULT_FROM_EMAIL,
-            [instance.email],
-        )
+@receiver(post_save, sender=Role)
+def sync_role_to_erpnext(sender, instance, created, **kwargs):
+    """Sync new roles to ERPNext"""
+    if created:
+        try:
+            client = ERPNextClient()
+            client.make_request(
+                'POST',
+                'frappe.client.insert',
+                data={
+                    'doctype': 'Role',
+                    'role_name': instance.name,
+                    'desk_access': instance.desk_access,
+                    'disabled': instance.disabled
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to sync role to ERPNext: {str(e)}")
 
-
-@receiver(user_logged_in)
-def on_user_login(sender, request, user, **kwargs):
-    user_agent = parse(request.META['HTTP_USER_AGENT'])
-    device_name = user_agent.device.family
-    browser = user_agent.browser.family
-    operating_system = user_agent.os.family
-    ip_address = request.META.get('REMOTE_ADDR')
-
-    UserDevice.objects.create(
-        user=user,
-        device_name=device_name,
-        device_type='Mobile' if user_agent.is_mobile else 'PC',
-        browser=browser,
-        operating_system=operating_system,
-        ip_address=ip_address,
-        login_time=timezone.now()
-    )
-
-@receiver(user_logged_out)
-def on_user_logout(sender, request, user, **kwargs):
-    user_devices = UserDevice.objects.filter(user=user, ip_address=request.META.get('REMOTE_ADDR'))
-    if user_devices.exists():
-        user_device = user_devices.first()
-        user_device.last_active = timezone.now()
-        user_device.save()
+@receiver(post_save, sender=UserDevice)
+def handle_user_device(sender, instance, created, **kwargs):
+    """Handle post-save actions for UserDevice model"""
+    if created:
+        logger.info(f"New device registered for user {instance.user.email}: {instance.device_name or instance.browser}")

@@ -24,7 +24,18 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import ListAPIView
 from rest_framework.filters import SearchFilter
+from accounts.permissions import ERPNextPermission
+from .services.sync_service import ERPNextSyncService
+from django.db import transaction
+from .services.erpnext_client import ERPNextClient
+from django.db import transaction
+from .models import CustomUser, Role
+import hmac
+import hashlib
+import json
+import logging
 
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -281,3 +292,171 @@ class LogoutDeviceView(APIView):
         device = get_object_or_404(UserDevice, id=device_id, user=request.user)
         device.delete()
         return Response({"message": "Device successfully logged out and removed"}, status=status.HTTP_204_NO_CONTENT)
+
+class ERPNextPermissionView(APIView):
+    permission_classes = [ERPNextPermission]
+    doctype = 'Sales Invoice'  # Specify the ERPNext DocType
+
+class SyncERPNextView(APIView):
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        try:
+            sync_service = ERPNextSyncService()
+            sync_service.sync_roles()
+            return Response({
+                'message': 'Successfully synchronized with ERPNext'
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'error': f'Synchronization failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class CustomerSignupView(APIView):
+    @transaction.atomic
+    def post(self, request):
+        try:
+            # Get user data from request
+            user_data = {
+                'first_name': request.data.get('first_name'),
+                'last_name': request.data.get('last_name'),
+                'email': request.data.get('email'),
+                'phone': request.data.get('phone'),
+                'password': request.data.get('password')
+            }
+
+            # Validate required fields
+            required_fields = ['first_name', 'last_name', 'email', 'password']
+            for field in required_fields:
+                if not user_data.get(field):
+                    return Response(
+                        {'error': f'{field} is required'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            # Create user in Django
+            user = User.objects.create_user(
+                username=user_data['email'],
+                email=user_data['email'],
+                password=user_data['password'],
+                first_name=user_data['first_name'],
+                last_name=user_data['last_name']
+            )
+
+            # Assign customer role
+            customer_role = Role.objects.get(name='Customer')
+            user.roles.add(customer_role)
+
+            # Create customer in ERPNext
+            erpnext_client = ERPNextClient()
+            customer = erpnext_client.create_customer(user_data)
+
+            # Store ERPNext customer ID with user
+            user.erpnext_customer_id = customer.get('name')
+            user.save()
+
+            return Response({
+                'message': 'Customer account created successfully',
+                'user_id': user.id,
+                'customer_id': customer.get('name')
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            # Rollback will happen automatically if there's an error
+            logger.error(f"Customer signup failed: {str(e)}")
+            return Response({
+                'error': 'Failed to create customer account'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ERPNextWebhookView(APIView):
+    def verify_signature(self, request):
+        """Verify ERPNext webhook signature"""
+        secret = settings.ERPNEXT_WEBHOOK_SECRET
+        signature = request.headers.get('X-Frappe-Signature')
+        
+        if not signature:
+            return False
+
+        digest = hmac.new(
+            secret.encode('utf-8'),
+            request.body,
+            hashlib.sha256
+        ).hexdigest()
+        
+        return hmac.compare_digest(digest, signature)
+
+    def post(self, request):
+        """Handle ERPNext webhooks"""
+        if not self.verify_signature(request):
+            return Response(
+                {'error': 'Invalid signature'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            event = request.data.get('event')
+            doc = request.data.get('doc', {})
+
+            if event == 'User.after_insert':
+                # Handle new user creation
+                with transaction.atomic():
+                    # Skip if user already exists
+                    if CustomUser.objects.filter(email=doc.get('email')).exists():
+                        return Response({'status': 'User already exists'})
+
+                    # Determine role
+                    role_name = None
+                    roles = doc.get('roles', [])
+                    if any(r.get('role') == 'Administrator' for r in roles):
+                        role_name = 'Admin'
+                    elif any(r.get('role') == 'System Manager' for r in roles):
+                        role_name = 'Manager'
+                    elif any(r.get('role') == 'Employee' for r in roles):
+                        role_name = 'Employee'
+                    elif any(r.get('role') == 'Customer' for r in roles):
+                        role_name = 'Customer'
+
+                    role = Role.objects.get(name=role_name) if role_name else None
+
+                    # Create user
+                    user = CustomUser.objects.create(
+                        email=doc.get('email'),
+                        first_name=doc.get('first_name', ''),
+                        last_name=doc.get('last_name', ''),
+                        is_active=doc.get('enabled', True),
+                        erpnext_user_id=doc.get('name'),
+                        erpnext_sync_status='synced',
+                        role=role
+                    )
+
+                    # Set a random password (user will need to reset)
+                    user.set_password(CustomUser.objects.make_random_password())
+                    user.save()
+
+                    logger.info(f"Created user from ERPNext webhook: {user.email}")
+                    return Response({'status': 'success'})
+
+            elif event == 'User.after_save':
+                # Handle user updates
+                with transaction.atomic():
+                    user = CustomUser.objects.filter(
+                        erpnext_user_id=doc.get('name')
+                    ).first()
+
+                    if user:
+                        user.first_name = doc.get('first_name', '')
+                        user.last_name = doc.get('last_name', '')
+                        user.is_active = doc.get('enabled', True)
+                        user.save()
+
+                        logger.info(f"Updated user from ERPNext webhook: {user.email}")
+                        return Response({'status': 'success'})
+
+            return Response({'status': 'ignored'})
+
+        except Exception as e:
+            logger.error(f"Error processing webhook: {str(e)}")
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

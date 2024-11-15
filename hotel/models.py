@@ -4,18 +4,24 @@ from django.db import models
 from accounts.models import CustomUser
 from django.utils.timezone import now
 
+class Amenity(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    icon = models.CharField(max_length=50, blank=True, null=True)  # For storing FontAwesome or similar icon names
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        verbose_name_plural = "Amenities"
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
 class Room(models.Model):
     ROOM_TYPES = [
         ('single', 'Single'),
         ('double', 'Double'),
         ('suite', 'Suite'),
-    ]
-    
-    AMENITIES = [
-        ('wifi', 'Wi-Fi'),
-        ('ac', 'Air Conditioning'),
-        ('tv', 'Television'),
-        ('room_service', 'Room Service'),
     ]
     
     room_number = models.CharField(max_length=10, unique=True)
@@ -25,7 +31,7 @@ class Room(models.Model):
     is_under_maintenance = models.BooleanField(default=False)
     capacity = models.IntegerField()
     description = models.TextField(blank=True, null=True)
-    amenities = models.JSONField(default=list)  # Stores amenities in JSON format
+    amenities = models.ManyToManyField(Amenity, related_name='rooms')  # Changed from JSONField to M2M
     photos = models.ImageField(upload_to='room_photos/', blank=True, null=True)
 
     def __str__(self):
@@ -49,29 +55,79 @@ class Room(models.Model):
         self.is_available = True
         self.save()
 
+    def check_availability(self, check_in_date, check_out_date):
+        """Check if room is available for given dates"""
+        overlapping_bookings = self.booking_set.filter(
+            status='confirmed',
+            check_in_date__lt=check_out_date,
+            check_out_date__gt=check_in_date
+        )
+        return not overlapping_bookings.exists() and not self.is_under_maintenance
+
+    def update_availability_status(self):
+        """Update room availability based on current bookings"""
+        current_date = now().date()
+        has_active_booking = self.booking_set.filter(
+            status='confirmed',
+            check_in_date__lte=current_date,
+            check_out_date__gt=current_date
+        ).exists()
+        
+        self.is_available = not (has_active_booking or self.is_under_maintenance)
+        self.save()
+
 
 class Booking(models.Model):
     BOOKING_STATUS = [
+        ('pending', 'Pending'),
         ('confirmed', 'Confirmed'),
         ('cancelled', 'Cancelled'),
+        ('completed', 'Completed')  # Added new status
     ]
 
     customer = models.ForeignKey(CustomUser, on_delete=models.CASCADE, limit_choices_to={'role': 'customer'})
     room = models.ForeignKey(Room, on_delete=models.CASCADE)
     check_in_date = models.DateField()
     check_out_date = models.DateField()
-    status = models.CharField(max_length=10, choices=BOOKING_STATUS, default='confirmed')
+    status = models.CharField(max_length=10, choices=BOOKING_STATUS, default='pending')
     special_requests = models.TextField(blank=True, null=True)
     dynamic_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def cancel(self):
-        self.status = 'cancelled'
-        self.room.is_available = True
-        self.save()
+    def save(self, *args, **kwargs):
+        """Override save to handle room availability"""
+        if self.pk is None:  # New booking
+            if self.status == 'confirmed':
+                if not self.room.check_availability(self.check_in_date, self.check_out_date):
+                    raise ValueError("Room is not available for these dates")
+        
+        super().save(*args, **kwargs)
+        self.room.update_availability_status()
 
-    def __str__(self):
-        return f'Booking {self.id} by {self.customer.username} for Room {self.room.room_number}'
+    def cancel(self):
+        """Enhanced cancellation method"""
+        if self.status == 'confirmed':
+            self.status = 'cancelled'
+            self.save()
+            
+            # Update room availability
+            self.room.update_availability_status()
+            
+            # Handle related payment if exists
+            try:
+                payment = self.payment
+                if payment.status == 'completed':
+                    # Here you might want to handle refund logic
+                    pass
+            except Payment.DoesNotExist:
+                pass
+
+    def complete_booking(self):
+        """Mark booking as completed after checkout"""
+        if self.status == 'confirmed':
+            self.status = 'completed'
+            self.save()
+            self.room.update_availability_status()
 
 
 class Review(models.Model):

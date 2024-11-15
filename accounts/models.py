@@ -7,13 +7,27 @@ from django.utils.translation import gettext_lazy as _
 from django.core.mail import send_mail
 from django.conf import settings
 from django.core.validators import FileExtensionValidator
+from django.db import transaction
+from .services.erpnext_client import ERPNextClient
+import requests
+from requests.exceptions import RequestException
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from django.conf import settings
 
+# Constants for Frappe API URLs
+FRAPPE_BASE_URL = settings.FRAPPE_BASE_URL
+FRAPPE_API_KEY = settings.FRAPPE_API_KEY
+FRAPPE_API_SECRET = settings.FRAPPE_API_SECRET
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
-        """
-        Create and return a user with an email and password.
-        """
+    def create_user(self, email: str, password: str = None, **extra_fields) -> 'CustomUser':
+        """Create and return a user with an email and password."""
         if not email:
             raise ValueError(_("The Email field must be set"))
         
@@ -23,10 +37,8 @@ class CustomUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password=None, **extra_fields):
-        """
-        Create and return a superuser with an email and password.
-        """
+    def create_superuser(self, email: str, password: str = None, **extra_fields) -> 'CustomUser':
+        """Create and return a superuser with an email and password."""
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
 
@@ -45,121 +57,144 @@ class CustomUser(AbstractUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(default=timezone.now)
     profile_photo = models.ImageField(
-    upload_to='profile_photos/',
-    null=True,
-    blank=True,
-    validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])],
-    help_text=_("profile photo.")
+        upload_to='profile_photos/',
+        null=True,
+        blank=True,
+        help_text=_("Profile photo.")
     )
+    erpnext_customer_id = models.CharField(max_length=140, blank=True, null=True)
+    erpnext_user_id = models.CharField(max_length=140, blank=True, null=True, help_text=_("User ID in ERPNext system"))
+    erpnext_sync_status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('synced', 'Synced'), ('failed', 'Failed')], default='pending')
+    erpnext_sync_error = models.TextField(blank=True, null=True)
 
     USERNAME_FIELD = 'email'  # Set email as the unique identifier
     REQUIRED_FIELDS = []  # No other required fields apart from email
 
     objects = CustomUserManager()
 
-    # Choices for the role field   
-    ADMIN = 'admin'
-    MANAGER = 'manager'
-    EXECUTIVE_DIRECTOR = 'executive_director'
-    EMPLOYEE = 'employee'
-    CUSTOMER = 'customer'
-
+    # Role choices
     ROLE_CHOICES = [
-        (ADMIN, 'Admin'),
-        (MANAGER, 'Manager'),
-        (EXECUTIVE_DIRECTOR, 'Executive Director'),
-        (EMPLOYEE, 'Employee'),
-        (CUSTOMER, 'Customer'),
+        ('Admin', 'Admin'),
+        ('Manager', 'Manager'),
+        ('Executive Director', 'Executive Director'),
+        ('Employee', 'Employee'),
+        ('Customer', 'Customer'),
     ]
+    role = models.ForeignKey('Role', on_delete=models.SET_NULL, null=True, blank=True, related_name='users', verbose_name=_('Role'))
 
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=CUSTOMER)
-    
-    def is_manager(self):
-        return self.role == self.MANAGER
+    def save(self, *args, **kwargs):
+        """Override save method to sync user data to Frappe."""
+        try:
+            super().save(*args, **kwargs)
+            if not self.first_name:
+                raise ValidationError("First name is required")
+            self._sync_user_to_frappe()
+        except ValidationError as e:
+            if self.pk:
+                self.refresh_from_db()
+            raise e
+        except Exception as e:
+            if self.pk:
+                self.refresh_from_db()
+            raise ValidationError(f"Unexpected error: {str(e)}")
 
-    def is_executive_director(self):
-        return self.role == self.EXECUTIVE_DIRECTOR
-    
-    def is_employee(self):
-        return self.role == self.EMPLOYEE
+    def _sync_user_to_frappe(self):
+        """Sync user data to Frappe."""
+        frappe_service = FrappeService()
+        user_exists = frappe_service.check_user_exists(self.email)
 
-    def is_admin(self):
-        return self.role == self.ADMIN
-
-    def is_customer(self):
-        return self.role == self.CUSTOMER
+        if user_exists:
+            frappe_service.update_user(self)
+        else:
+            frappe_service.create_user(self)
 
     def __str__(self):
         return self.email
 
-    def email_user(self, subject, message, from_email=None, **kwargs):
-        """
-        Sends an email to this user.
-        """
+    def email_user(self, subject: str, message: str, from_email: str = None, **kwargs):
+        """Sends an email to this user."""
         send_mail(subject, message, from_email, [self.email], **kwargs)
 
-    def save(self, *args, **kwargs):
-        # Track if this is a new instance or an update
-        is_new_instance = self._state.adding
 
-        # Store the original role before saving
-        original_role = None
-        if not is_new_instance:
-            original_role = CustomUser.objects.get(pk=self.pk).role
+class FrappeService:
+    """Service class to handle Frappe API interactions."""
 
-        # Call the original save method to ensure the user is saved to the database
-        super(CustomUser, self).save(*args, **kwargs)
+    def __init__(self):
+        self.session = self._create_session()
 
-        # Check if the role has changed or if this is a new user
-        if is_new_instance or (original_role != self.role):
-            # Clear existing groups to avoid conflicting group memberships
-            self.groups.clear()
+    def _create_session(self):
+        """Create a requests session with retry strategy."""
+        session = requests.Session()
+        retry_strategy = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504], allowed_methods=["POST", "GET"])
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        return session
 
-            # Determine the group based on the user's role
-            group_name = None
-            if self.role == self.MANAGER:
-                group_name = 'Manager'
-            elif self.role == self.EXECUTIVE_DIRECTOR:
-                group_name = 'Executive Director'
-            elif self.role == self.EMPLOYEE:
-                group_name = 'Employee'
-            elif self.role == self.CUSTOMER:
-                group_name = 'Customer'
+    def check_user_exists(self, email: str) -> bool:
+        """Check if the user exists in Frappe."""
+        check_url = f'{FRAPPE_BASE_URL}/api/method/frappe.client.get_value'
+        check_data = {
+            "doctype": "User",
+            "filters": {"email": email},
+            "fieldname": ["name"]
+        }
+        response = self._make_request(check_url, check_data)
+        return response.ok and response.json().get('message')
 
-            # If group_name is determined, proceed to add the user to the correct group
-            if group_name:
-                # Get or create the group
-                group, created = Group.objects.get_or_create(name=group_name)
+    def create_user(self, user: CustomUser):
+        """Create a new user in Frappe."""
+        data = {
+            "doc": {
+                "doctype": "User",
+                "email": user.email,
+                "first_name": user.first_name or "",
+                "last_name": user.last_name or "",
+                "send_welcome_email": 0,
+                "enabled": 1 if user.is_active else 0,
+                "user_type": "System User",
+                "roles": [
+                    {"role": "Employee", "parentfield": "roles", "parenttype": "User"},
+                    {"role": "Blogger", "parentfield": "roles", "parenttype": "User"}
+                ]
+            }
+        }
+        url = f'{FRAPPE_BASE_URL}/api/method/frappe.client.insert'
+        self._make_request(url, data)
 
-                # Assign default permissions to the group if it's newly created
-                if created:
-                    self.assign_permissions_to_group(group, group_name)
+    def update_user(self, user: CustomUser):
+        """Update existing user in Frappe."""
+        data = {
+            "doctype": "User",
+            "name": user.email,
+            "fieldname": {
+                "first_name": user.first_name or "",
+                "last_name": user.last_name or "",
+                "enabled": 1 if user.is_active else 0
+            }
+        }
+        url = f'{FRAPPE_BASE_URL}/api/method/frappe.client.set_value'
+        self._make_request(url, data)
 
-                # Add the user to the specific group
-                self.groups.add(group)
+    def _make_request(self, url: str, data: dict):
+        """Make a request to the Frappe API with error handling."""
+        try:
+            response = self.session.post(url, json=data, headers=self._get_headers(), timeout=(30, 30))
+            response.raise_for_status()  # Raise an error for bad responses
+            return response
+        except requests.Timeout:
+            raise ValidationError("Connection to Frappe server timed out. Please try again.")
+        except requests.ConnectionError as e:
+            raise ValidationError(f"Could not connect to Frappe server. Error: {str(e)}")
+        except Exception as e:
+            raise ValidationError(f"Error during API call: {str(e)}")
 
-    def assign_permissions_to_group(self, group, group_name):
-        """
-        Helper method to assign default permissions to a group.
-        Adjust as necessary for your use case.
-        """
-        # Define default permissions based on the group name
-        permissions = []
-        if group_name == 'Manager':
-            permissions = ['view_employee', 'change_employee', 'delete_employee']
-        elif group_name == 'Executive Director':
-            permissions = ['view_employee']
-        elif group_name == 'Employee':
-            permissions = ['view_employee']
-        elif group_name == 'Customer':
-            permissions = []
-
-        # Assign the permissions to the group
-        content_type = ContentType.objects.get(app_label='employee', model='employee')
-        for perm in permissions:
-            permission = Permission.objects.filter(codename=perm, content_type=content_type).first()
-            if permission:
-                group.permissions.add(permission)
+    def _get_headers(self) -> dict:
+        """Get headers for Frappe API requests."""
+        return {
+            'Authorization': f'token {FRAPPE_API_KEY}:{FRAPPE_API_SECRET}',
+            'Content-Type': 'application/json'
+        }
 
 class UserDevice(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
@@ -173,3 +208,84 @@ class UserDevice(models.Model):
 
     def __str__(self):
         return f"{self.device_name or self.browser} ({self.ip_address})"
+
+class Role(models.Model):
+    name = models.CharField(
+        max_length=100, 
+        unique=True,
+        help_text=_("Role name")
+    )
+    desk_access = models.BooleanField(default=True, help_text=_("Allow desk access"))
+    is_custom = models.BooleanField(default=True, help_text=_("Is this a custom role"))
+    disabled = models.BooleanField(default=False)
+    desk_shortcuts = models.JSONField(default=dict, blank=True)
+    permissions = models.JSONField(default=dict, blank=True)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        
+        if is_new:
+            try:
+                # Sync new role to ERPNext
+                client = ERPNextClient()
+                client.make_request(
+                    'POST',
+                    'frappe.client.insert',
+                    data={
+                        'doctype': 'Role',
+                        'role_name': self.name,
+                        'desk_access': self.desk_access,
+                        'disabled': self.disabled
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Failed to sync role to ERPNext: {str(e)}")
+
+class RolePermission(models.Model):
+    PERMISSION_TYPES = [
+        ('create', 'Create'),
+        ('read', 'Read'),
+        ('write', 'Write'),
+        ('delete', 'Delete'),
+        ('submit', 'Submit'),
+        ('cancel', 'Cancel'),
+        ('amend', 'Amend'),
+        ('report', 'Report'),
+    ]
+
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='role_permissions')
+    doctype = models.CharField(max_length=255, help_text=_("Document Type"))
+    permission_type = models.CharField(max_length=20, choices=PERMISSION_TYPES)
+    value = models.IntegerField(default=0, help_text=_("Permission Level (0 or 1)"))
+
+    class Meta:
+        unique_together = ('role', 'doctype', 'permission_type')
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        try:
+            # Sync permission to ERPNext
+            client = ERPNextClient()
+            client.make_request(
+                'POST',
+                'frappe.client.insert',
+                data={
+                    'doctype': 'Custom DocPerm',
+                    'role': self.role.name,
+                    'parent': self.doctype,
+                    'permlevel': 0,
+                    self.permission_type.lower(): self.value
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to sync permission to ERPNext: {str(e)}")

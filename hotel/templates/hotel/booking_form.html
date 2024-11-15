@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="booking-form">
+    <h2>Create New Booking</h2>
+    
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" id="bookingForm">
+        {% csrf_token %}
+        
+        <div class="date-fields">
+            {{ form.check_in_date.label_tag }}
+            {{ form.check_in_date }}
+            {{ form.check_in_date.errors }}
+
+            {{ form.check_out_date.label_tag }}
+            {{ form.check_out_date }}
+            {{ form.check_out_date.errors }}
+        </div>
+
+        <div class="room-field" style="display: none;">
+            {{ form.room.label_tag }}
+            {{ form.room }}
+            {{ form.room.errors }}
+        </div>
+
+        {{ form.special_requests.label_tag }}
+        {{ form.special_requests }}
+        {{ form.special_requests.errors }}
+
+        <button type="submit" class="btn btn-primary">Create Booking</button>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkInInput = document.getElementById('id_check_in_date');
+    const checkOutInput = document.getElementById('id_check_out_date');
+    const roomField = document.querySelector('.room-field');
+    const roomSelect = document.getElementById('id_room');
+
+    function updateAvailableRooms() {
+        const checkIn = checkInInput.value;
+        const checkOut = checkOutInput.value;
+
+        if (checkIn && checkOut) {
+            fetch(`/hotel/get-available-rooms/?check_in=${checkIn}&check_out=${checkOut}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+
+                    // Clear current options
+                    roomSelect.innerHTML = '<option value="">---------</option>';
+
+                    // Add new options
+                    data.rooms.forEach(room => {
+                        const option = new Option(
+                            `Room ${room.number} (${room.type}) - $${room.price}/night`,
+                            room.id
+                        );
+                        roomSelect.add(option);
+                    });
+
+                    // Show room field if we have available rooms
+                    roomField.style.display = data.rooms.length ? 'block' : 'none';
+                    if (!data.rooms.length) {
+                        alert('No rooms available for selected dates');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error fetching available rooms');
+                });
+        }
+    }
+
+    checkInInput.addEventListener('change', updateAvailableRooms);
+    checkOutInput.addEventListener('change', updateAvailableRooms);
+});
+</script>
+{% endblock %}

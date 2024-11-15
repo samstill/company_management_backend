@@ -1,47 +1,34 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin  # Make sure this import is here
-from .models import CustomUser, UserDevice
-from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.admin import UserAdmin
+from .models import CustomUser, UserDevice, Role, RolePermission
 
-# Define the UserDeviceInline class to show devices in the CustomUser admin page
-class UserDeviceInline(admin.TabularInline):
-    model = UserDevice
-    fields = ['device_name', 'device_type', 'browser', 'operating_system', 'ip_address', 'login_time', 'last_active']
-    readonly_fields = ['login_time', 'last_active']
-    extra = 0
-
-# Extend the CustomUserAdmin class to include UserDeviceInline
 class CustomUserAdmin(UserAdmin):
-    list_display = ['email', 'first_name', 'last_name', 'role', 'is_staff', 'is_active']
-    search_fields = ['email', 'first_name', 'last_name']
-    list_filter = ['is_staff', 'is_superuser', 'is_active', 'role']
-    
+    list_display = ('email', 'first_name', 'last_name', 'role', 'is_staff', 'erpnext_sync_status')
+    list_filter = ('is_staff', 'is_superuser', 'is_active', 'role', 'erpnext_sync_status')
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        (_('Personal info'), {'fields': ('profile_photo', 'first_name', 'last_name')}),
-        (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        (_('Role'), {'fields': ('role',)}),
-        (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'profile_photo')}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'role')}),
+        ('ERPNext Info', {'fields': ('erpnext_user_id', 'erpnext_customer_id', 'erpnext_sync_status', 'erpnext_sync_error')}),
     )
-    
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
             'fields': ('email', 'first_name', 'last_name', 'password1', 'password2', 'role'),
         }),
     )
-    
-    ordering = ['email']
-    
-    inlines = [UserDeviceInline]
+    search_fields = ('email', 'first_name', 'last_name')
+    ordering = ('email',)
+    readonly_fields = ('erpnext_user_id', 'erpnext_customer_id', 'erpnext_sync_status', 'erpnext_sync_error')
 
-# Register the CustomUser model with the updated CustomUserAdmin
+    def save_model(self, request, obj, form, change):
+        try:
+            obj.save()
+        except Exception as e:
+            self.message_user(request, f"Error syncing with ERPNext: {str(e)}", level='ERROR')
+            raise
+
 admin.site.register(CustomUser, CustomUserAdmin)
-
-# Register the UserDevice model to manage devices separately if needed
-@admin.register(UserDevice)
-class UserDeviceAdmin(admin.ModelAdmin):
-    list_display = ['user', 'device_name', 'device_type', 'browser', 'operating_system', 'ip_address', 'login_time', 'last_active']
-    search_fields = ['user__email', 'device_name', 'browser', 'ip_address']
-    readonly_fields = ['login_time', 'last_active']
-    list_filter = ['device_type', 'browser', 'operating_system']
+admin.site.register(UserDevice)
+admin.site.register(Role)
+admin.site.register(RolePermission)

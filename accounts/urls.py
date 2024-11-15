@@ -8,6 +8,9 @@ from .views import user_trends, LoggedInUserView, UpdateLoggedInUserView, Delete
 from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
+from .views import SyncERPNextView
+from .views import CustomerSignupView
+from .views import ERPNextWebhookView
 
 
 
@@ -40,6 +43,9 @@ urlpatterns = [
 
     path('devices/', LinkedDevicesView.as_view(), name='linked_devices_api'),
     path('devices/logout/<int:device_id>/', LogoutDeviceView.as_view(), name='logout_device_api'),
+    path('sync-erpnext/', SyncERPNextView.as_view(), name='sync_erpnext'),
+    path('signup/customer/', CustomerSignupView.as_view(), name='customer-signup'),
+    path('webhooks/erpnext/', ERPNextWebhookView.as_view(), name='erpnext-webhook'),
 ]
 
 

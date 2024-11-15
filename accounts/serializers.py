@@ -1,8 +1,7 @@
 from rest_framework import serializers
-from .models import CustomUser, UserDevice
+from .models import CustomUser, UserDevice, Role
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
 
 # Serializer for user registration
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -11,8 +10,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ( 'email','password', 'first_name', 'last_name', 'role')
-    
+        fields = ('email', 'password', 'first_name', 'last_name', 'role')
+
     def create(self, validated_data):
         # Get the request user from the context (request is passed in context in views)
         request_user = self.context['request'].user
@@ -20,26 +19,28 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         # Check if the request user is an admin or manager
         if request_user.is_authenticated and (request_user.is_admin() or request_user.is_manager()):
             # Allow setting the role if the request user is an admin or manager
-            role = validated_data.get('role', CustomUser.CUSTOMER)
+            role_name = validated_data.get('role', CustomUser.CUSTOMER)
         else:
             # Default to 'customer' role for non-admin/manager users
-            role = CustomUser.CUSTOMER
- 
-  
-            user = CustomUser.objects.create_user(
-                email=validated_data.get('email', ''),
-                password=validated_data['password'],
-                first_name=validated_data.get('first_name', ''),
-                last_name=validated_data.get('last_name', ''),
-                role=role,
+            role_name = CustomUser.CUSTOMER
+
+        # Retrieve the Role object by name
+        role = Role.objects.get(name=role_name)
+
+        # Create the user
+        user = CustomUser.objects.create_user(
+            email=validated_data.get('email', ''),
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            role=role
         )
         return user
 
 # Serializer for general user details
-
-
 class CustomUserSerializer(serializers.ModelSerializer):
     profile_photo = serializers.SerializerMethodField()
+    role = serializers.CharField(source='role.name', read_only=True)  # Serialize role as a string
 
     class Meta:
         model = CustomUser
@@ -62,16 +63,17 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
 
         # Add custom claims
-        token['role'] = user.role
+        token['role'] = user.role.name if user.role else None  # Use role name or None if no role
         return token
 
     def validate(self, attrs):
         data = super().validate(attrs)
 
         # Add extra responses here
-        data['role'] = self.user.role
+        data['role'] = self.user.role.name if self.user.role else None  # Use role name or None if no role
         return data
 
+# Serializer for UserDevice model
 class UserDeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserDevice

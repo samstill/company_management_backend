@@ -12,10 +12,22 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+import os
+from dotenv import load_dotenv
+import environ
+import urllib3
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Initialize environ
+env = environ.Env()
+
+# Read .env file
+environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -27,7 +39,6 @@ SECRET_KEY = 'django-insecure-f1v%a^zv=5u_=7$&-z+zluba641!=usg74tn9027fq_b+5qpx_
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',  # Add your frontend address here
@@ -42,7 +53,6 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -54,15 +64,24 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
 
-    # Third party apps
+    # Django contrib apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # Required by allauth
+
+    # Allauth apps
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',  # Social provider for Google
 ]
 
+# Site ID required by django-allauth
+SITE_ID = 1
 
 # JWT settings
 SIMPLE_JWT = {
@@ -71,7 +90,6 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
-
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -83,10 +101,7 @@ REST_FRAMEWORK = {
 }
 
 MIDDLEWARE = [
-    #Custom Middleware
-    
-
-
+    # Custom Middleware
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -94,6 +109,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'accounts.middleware.DeviceManagementMiddleware',
@@ -119,8 +135,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'company_management.wsgi.application'
 
-
-
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
@@ -128,9 +142,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': 20,  # in seconds
+            'check_same_thread': False,
+        },
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -150,7 +167,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
@@ -162,7 +178,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
@@ -173,27 +188,15 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
 # Custom user model
 AUTH_USER_MODEL = 'accounts.CustomUser'
-
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-
 # Email settings (for notifications)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.example.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'your_email@example.com'
-EMAIL_HOST_PASSWORD = 'your_password'
-DEFAULT_FROM_EMAIL = 'your_email@example.com'
-
-# Email Backend Settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Or your SMTP provider
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'your_email@example.com'
@@ -202,3 +205,33 @@ DEFAULT_FROM_EMAIL = 'your_email@example.com'
 
 # Site URL (for constructing the verification link)
 SITE_URL = 'http://127.0.0.1:8000'  # Your domain name or localhost
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+
+# ERPNext Integration Settings
+ERPNEXT_SITE_URL = os.getenv('ERPNEXT_SITE_URL', 'https://your-erpnext-site.com')
+ERPNEXT_API_KEY = os.getenv('ERPNEXT_API_KEY', '')
+ERPNEXT_API_SECRET = os.getenv('ERPNEXT_API_SECRET', '')
+
+CELERY_BEAT_SCHEDULE = {
+    'sync-erpnext-roles': {
+        'task': 'accounts.tasks.sync_erpnext_roles',
+        'schedule': 3600.0,  # Run every hour
+    },
+}
+
+# ERPNext Webhook Settings
+ERPNEXT_WEBHOOK_SECRET = os.getenv('ERPNEXT_WEBHOOK_SECRET', 'your-secret-here')
+
+# Frappe API Settings
+FRAPPE_API_KEY = '89f576368e5a6ad'
+FRAPPE_API_SECRET = '764b0ac71e4310e'
+FRAPPE_BASE_URL = 'http://165.22.220.125'  # Consider using HTTPS in production
+FRAPPE_API_TIMEOUT = (30, 30)  # (connect timeout, read timeout) in seconds
+
+# For development only - disable SSL verification warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
